@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 707 1000" width="707" height="1000">
+  <!-- A stand-in for a customer's upload, used only by the style preview on the
+       reference images dashboard. Authored for pluto-store; see LICENSE.txt. -->
+  <rect width="707" height="1000" fill="#d8dcd2"/>
+  <circle cx="353" cy="300" r="190" fill="#e9ebe4"/>
+  <path d="M0 720C120 660 240 700 353 690s233-52 354-118v428H0Z" fill="#8f9c86"/>
+  <path d="M0 800c130 -40 250 10 353 4s240 -60 354 -96v292H0Z" fill="#6f7d68"/>
+  <g>
+    <path d="M353 806c-104 0-188-54-188-120 0-52 52-84 128-98l120 0c76 14 128 46 128 98 0 66-84 120-188 120Z" fill="#c4753f"/>
+    <path d="M273 560h160v72a80 80 0 0 1-160 0Z" fill="#e0a06c"/>
+    <ellipse cx="353" cy="470" rx="132" ry="152" fill="#eeb079"/>
+    <path d="M221 452c0-96 59-156 132-156s132 60 132 156c0 22-6 44-6 44 0-64-42-92-126-92-46 0-126 20-126 92 0 0-6-22-6-44Z" fill="#3c3330"/>
+    <ellipse cx="305" cy="470" rx="13" ry="16" fill="#3c3330"/>
+    <ellipse cx="401" cy="470" rx="13" ry="16" fill="#3c3330"/>
+    <path d="M281 424c16-10 34-10 48-2" stroke="#3c3330" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M378 422c14-8 32-8 48 2" stroke="#3c3330" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M345 496h16l-10 36h-14Z" fill="#d9925c"/>
+    <path d="M318 556c22 16 48 16 70 0" stroke="#b9663a" stroke-width="11" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

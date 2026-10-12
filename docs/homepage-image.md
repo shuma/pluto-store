@@ -1,0 +1,9 @@
+# Homepage poster image
+
+Asset: `public/images/poster-studio.png`
+
+Created with the built-in image generation tool. Original illustrative marketing mockup, not a customer generation or licensed creator product. Reference direction: https://mrmockup.com/free-poster-mockups/ and https://highelfclub.com/collections/media-and-entertainment-example-products . No reference artwork is embedded in the website.
+
+## Final generation prompt
+
+Use case: product-mockup. Asset: Pluto creator-commerce homepage hero, landscape 3:2 image. Create a photorealistic premium art print product photograph: one large unframed portrait-format fine-art paper poster resting on a low natural oak bench and leaning against a warm off-white plaster wall, with a second smaller print partially visible behind it. Main poster artwork is an ORIGINAL sophisticated textured figurative mixed-media painting of two friends in casual summer clothing seated together beside the sea, rich plum background, dusty pink, ochre and muted sage, believable human proportions, expressive painterly detail, subtle cut-paper and oil-pastel textures, no cartoon outlines. Secondary poster has a restrained abstract botanical painting. Main poster fills most of the image; clearly visible real cream paper margin, subtle curled edge and paper texture. Soft afternoon sunlight from left, believable directional shadows on wall and bench, editorial interior photography, natural materials, quiet gallery feeling, sharp print detail. Camera almost straight on with slight perspective. Keep all main poster edges inside frame. No text, logos, signatures, watermarks, UI, people outside artwork or decorative clutter. This is an original concept, not a reproduction of an existing artwork. Output polished photographic realism, not CGI and not vector illustration.

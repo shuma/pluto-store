@@ -1,0 +1,6 @@
+These garden, cat and flower SVG illustrations were created for pluto-store in this repository. They contain no copied creator artwork or third-party source assets. The repository owner may use, modify, redistribute and license these assets as part of Pluto. They are illustrative placeholders, not evidence of image transformation results or affiliation with High Elf Club.
+
+sample-photo.svg was likewise created for pluto-store in this repository. It is
+the fixed sample the reference images dashboard runs through a creator's board
+to preview their style. It is an illustration standing in for a customer upload,
+not a photograph and not a real person.

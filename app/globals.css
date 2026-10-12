@@ -1,0 +1,679 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* GT America, licensed variable files (weight 100-900; the default width is
+   the standard cut). Browsers fetch each face only when text uses it; only
+   the mono face is in use, since the UI is set in Inter. */
+@font-face {
+  font-family: "GT America";
+  src: url("/fonts/gt-america/GT-America-Intl-VF_0.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "GT America";
+  src: url("/fonts/gt-america/GT-America-Intl-VF-Italic-VF.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "GT America Mono";
+  src: url("/fonts/gt-america/GT-America-Intl-VF-Mono-VF_0.ttf")
+    format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Pluto Store design language. Literal values live only in these two token
+   blocks (from gui/themes/pluto-store.md); everything else references them.
+   See GUI.md before changing a value. */
+:root {
+  /* Pluto Store theme tokens (gui/themes/pluto-store.md), light. */
+  --theme-name: "Pluto Store";
+  --theme-icon-family: Lucide;
+  --theme-icon-style: outlined;
+  --toolbar-divider-bleed: 0;
+  --focus-ring-outline: 2px solid color-mix(in srgb, #37373d 55%, transparent);
+  --icon-stroke-width: 2;
+  --icon-light-display: none;
+  --icon-regular-display: inline;
+  --icon-bold-display: none;
+  --motion-duration: 160ms;
+  --motion-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-type: easing;
+  --motion-visual-duration: 0.16;
+  --motion-bounce: 0.2;
+  --motion-enabled: 1;
+  --motion-small-iterations: infinite;
+  --motion-large-duration: 300ms;
+  --motion-large-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-large-type: easing;
+  --motion-large-visual-duration: 0.3;
+  --motion-large-bounce: 0.2;
+  --motion-large-iterations: infinite;
+  --motion-popup-scale: 0.98;
+  --motion-press-distance: 1px;
+  --option-badge-background: color-mix(
+    in srgb,
+    var(--color-1) 10%,
+    transparent
+  );
+  --option-badge-foreground: #37373d;
+  --navigation-active-foreground: #202124;
+  --emphasis-chart-fill: #37373d33;
+  --emphasis-balance-background: #f2f2f3;
+  --emphasis-rewards-background: #f2f2f3;
+  --emphasis-icon-background: #f2f2f3;
+  --emphasis-icon-foreground: #202124;
+  --emphasis-type-background: #f2f2f3;
+  --emphasis-type-foreground: #202124;
+  --navigation-active-background: #37373d33;
+  --surface-raised-image: linear-gradient(
+    180deg,
+    #ffffff1f 0%,
+    #ffffff00 48%,
+    #2021240d 100%
+  );
+  --surface-raised-shadow:
+    inset 0px 1px 0px 0px #ffffffb3, inset 0px -1px 0px 0px #20212429;
+  --surface-recessed-image: linear-gradient(
+    180deg,
+    #2021240d 0%,
+    #20212400 55%
+  );
+  --surface-recessed-shadow:
+    inset 0px 1px 2px 0px #20212414, inset 0px -1px 0px 0px #ffffff59;
+  --space-zero: 0px;
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-s: 12px;
+  --space-m: 16px;
+  --space-l: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --tracking-xs: -0.02em;
+  --tracking-s: -0.01em;
+  --tracking-m: 0em;
+  --tracking-l: 0.01em;
+  --tracking-xl: 0.02em;
+  --size-xxs: 10px;
+  --line-xxs: 14px;
+  --letter-spacing-xxs: 0.02em;
+  --size-xs: 12px;
+  --line-xs: 16px;
+  --letter-spacing-xs: 0.01em;
+  --size-s: 14px;
+  --line-s: 20px;
+  --letter-spacing-s: 0.01em;
+  --size-m: 16px;
+  --line-m: 24px;
+  --letter-spacing-m: 0em;
+  --size-l: 24px;
+  --line-l: 32px;
+  --letter-spacing-l: -0.01em;
+  --size-xl: 36px;
+  --line-xl: 40px;
+  --letter-spacing-xl: -0.01em;
+  --size-xxl: 48px;
+  --line-xxl: 52px;
+  --letter-spacing-xxl: -0.02em;
+  --radius-zero: 0px;
+  --radius-xs: 4px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+  --border-none: 0px;
+  --border-s: 1px;
+  --border-m: 1px;
+  --border-l: 2px;
+  --border-default-color: #94949c33;
+  --border-shadow-none: 0 0 0 0 transparent;
+  --border-shadow-s: 0 0 0 1px #94949c33;
+  --border-shadow-m: 0 0 0 1px #94949c33;
+  --border-shadow-l: 0 0 0 2px #94949c33;
+  --font-ui: var(--font-inter), sans-serif;
+  --weight-ui-regular: 400;
+  --weight-ui-medium: 500;
+  --weight-ui-heavy: 600;
+  --font-brand: var(--font-inter), sans-serif;
+  --weight-brand-regular: 400;
+  --weight-brand-medium: 500;
+  --weight-brand-heavy: 600;
+  --font-editorial: var(--font-inter), sans-serif;
+  --weight-editorial-regular: 400;
+  --weight-editorial-medium: 500;
+  --weight-editorial-heavy: 600;
+  --font-data: var(--font-inter), sans-serif;
+  --weight-data-regular: 400;
+  --weight-data-medium: 500;
+  --weight-data-heavy: 600;
+  --color-none: transparent;
+  --color-1: #37373d;
+  --color-1-transparent: #37373d33;
+  --color-2: #dfddd8;
+  --color-2-transparent: #dfddd833;
+  --color-3: #b5c5cd;
+  --color-3-transparent: #b5c5cd33;
+  --color-4: #c7b3a1;
+  --color-4-transparent: #c7b3a133;
+  /* Moss green: the palette's one saturated colour, for chart series. Kept
+     yellower than --success so a revenue bar never reads as a status. */
+  --color-5: #5e7a3a;
+  --color-5-transparent: #5e7a3a33;
+  --neutral-1: #ffffff;
+  --neutral-1-transparent: #ffffff33;
+  --neutral-2: #fafafa;
+  --neutral-2-transparent: #fafafa33;
+  --neutral-3: #f2f2f3;
+  --neutral-3-transparent: #f2f2f333;
+  --neutral-4: #e4e4e7;
+  --neutral-4-transparent: #e4e4e733;
+  --neutral-5: #c5c5ca;
+  --neutral-5-transparent: #c5c5ca33;
+  --neutral-6: #94949c;
+  --neutral-6-transparent: #94949c33;
+  --neutral-7: #6e6e76;
+  --neutral-7-transparent: #6e6e7633;
+  --neutral-8: #505057;
+  --neutral-8-transparent: #50505733;
+  --neutral-9: #343438;
+  --neutral-9-transparent: #34343833;
+  --neutral-10: #202124;
+  --neutral-10-transparent: #20212433;
+  --success: #247348;
+  --success-transparent: #24734833;
+  --warning: #94651e;
+  --warning-transparent: #94651e33;
+  --error: #bd3d42;
+  --error-transparent: #bd3d4233;
+  --shadow-none: none;
+  --shadow-s: 0px 0.25px 0.75px 0px #2021240d, 0px 1px 3px 0px #20212413;
+  --shadow-m: 0px 1px 4px 0px #2021240b, 0px 4px 16px 0px #20212410;
+  --shadow-l: 0px 3px 9px 0px #2021240f, 0px 12px 36px 0px #20212416;
+  --cte-canvas: #ffffff;
+  --cte-surface: #fafafa;
+  --cte-surface-muted: #f2f2f3;
+  --cte-text: #202124;
+  --cte-text-muted: #6e6e76;
+  --cte-border: #94949c33;
+  --cte-accent: #37373d;
+  --cte-accent-text: #fafafa;
+  --cte-danger: #bd3d42;
+  --cte-focus: #37373d;
+  --cte-font: var(--font-inter), sans-serif;
+  --cte-font-size: 14px;
+  --cte-font-weight: 400;
+  --cte-line-height: 20px;
+  --cte-letter-spacing: 0.01em;
+  --cte-detail-font-size: 12px;
+  --cte-detail-line-height: 16px;
+  --cte-detail-letter-spacing: 0.01em;
+
+  /* Font roles: Inter, the theme's free stand-in for GT America, loaded by
+     next/font in app/layout.tsx as --font-inter. The licensed GT America
+     files stay declared above for the mono face. */
+  --font-ui: var(--font-inter), sans-serif;
+  --font-brand: var(--font-inter), sans-serif;
+  --font-editorial: var(--font-inter), sans-serif;
+  --font-data: var(--font-inter), sans-serif;
+  --cte-font: var(--font-inter), sans-serif;
+
+  /* Component appearance from gui/themes/pluto-store-components.md. */
+  --raised-image: linear-gradient(180deg, #ffffff1f 0%, #2021240d 100%);
+  --raised-bevel:
+    inset 0px 1px 0px 0px #ffffffb3, inset 0px -1px 0px 0px #20212429,
+    inset 0px 0px 0px 1px #ffffff2d;
+
+  /* Local exception to the theme: Pluto's warm ink and paper, kept for the
+     primary action and the board/preview panels. */
+  --warm-ink: oklch(0.21 0.008 70);
+  --warm-ink-foreground: oklch(0.985 0.004 80);
+  --warm-paper: oklch(0.985 0.004 80);
+  --warm-paper-shell: oklch(0.955 0.006 80);
+}
+
+.dark {
+  --focus-ring-outline: 2px solid color-mix(in srgb, #e2e2e8 55%, transparent);
+  --option-badge-foreground: #e2e2e8;
+  --navigation-active-foreground: #fafafa;
+  --emphasis-chart-fill: #e2e2e833;
+  --emphasis-balance-background: #2a2a2e;
+  --emphasis-rewards-background: #2a2a2e;
+  --emphasis-icon-background: #2a2a2e;
+  --emphasis-icon-foreground: #fafafa;
+  --emphasis-type-background: #2a2a2e;
+  --emphasis-type-foreground: #fafafa;
+  --navigation-active-background: #e2e2e833;
+  --surface-raised-image: linear-gradient(
+    180deg,
+    #fafafa1a 0%,
+    #fafafa00 48%,
+    #1717191f 100%
+  );
+  --surface-raised-shadow:
+    inset 0px 1px 0px 0px #fafafa3d, inset 0px -1px 0px 0px #1717193d;
+  --surface-recessed-image: linear-gradient(
+    180deg,
+    #1717191f 0%,
+    #17171900 55%
+  );
+  --surface-recessed-shadow:
+    inset 0px 1px 2px 0px #17171933, inset 0px -1px 0px 0px #fafafa1f;
+  --border-default-color: #80808a33;
+  --border-shadow-s: inset 0 0 0 1px #80808a33;
+  --border-shadow-m: inset 0 0 0 1px #80808a33;
+  --border-shadow-l: inset 0 0 0 2px #80808a33;
+  --color-1: #e2e2e8;
+  --color-1-transparent: #e2e2e833;
+  --color-2: #8c8983;
+  --color-2-transparent: #8c898333;
+  --color-3: #8daab8;
+  --color-3-transparent: #8daab833;
+  --color-4: #bca58d;
+  --color-4-transparent: #bca58d33;
+  --color-5: #a9c584;
+  --color-5-transparent: #a9c58433;
+  --neutral-1: #171719;
+  --neutral-1-transparent: #17171933;
+  --neutral-2: #202023;
+  --neutral-2-transparent: #20202333;
+  --neutral-3: #2a2a2e;
+  --neutral-3-transparent: #2a2a2e33;
+  --neutral-4: #3b3b40;
+  --neutral-4-transparent: #3b3b4033;
+  --neutral-5: #55555d;
+  --neutral-5-transparent: #55555d33;
+  --neutral-6: #80808a;
+  --neutral-6-transparent: #80808a33;
+  --neutral-7: #ababb4;
+  --neutral-7-transparent: #ababb433;
+  --neutral-8: #cdcdd3;
+  --neutral-8-transparent: #cdcdd333;
+  --neutral-9: #e8e8ed;
+  --neutral-9-transparent: #e8e8ed33;
+  --neutral-10: #fafafa;
+  --neutral-10-transparent: #fafafa33;
+  --success: #8fd5ad;
+  --success-transparent: #8fd5ad33;
+  --warning: #e5c279;
+  --warning-transparent: #e5c27933;
+  --error: #f49fa5;
+  --error-transparent: #f49fa533;
+  --shadow-s: 0px 0.25px 0.75px 0px #1717190d, 0px 1px 3px 0px #17171913;
+  --shadow-m: 0px 1px 4px 0px #1717190b, 0px 4px 16px 0px #17171910;
+  --shadow-l: 0px 3px 9px 0px #1717190f, 0px 12px 36px 0px #17171916;
+  --cte-canvas: #171719;
+  --cte-surface: #202023;
+  --cte-surface-muted: #2a2a2e;
+  --cte-text: #fafafa;
+  --cte-text-muted: #ababb4;
+  --cte-border: #80808a33;
+  --cte-accent: #e2e2e8;
+  --cte-accent-text: #202023;
+  --cte-danger: #f49fa5;
+  --cte-focus: #e2e2e8;
+  --raised-image: linear-gradient(180deg, #fafafa1a 0%, #1717191f 100%);
+  --raised-bevel:
+    inset 0px 1px 0px 0px #fafafa3d, inset 0px -1px 0px 0px #1717193d,
+    inset 0px 0px 0px 1px #fafafa0f;
+  --warm-ink: oklch(0.93 0.006 80);
+  --warm-ink-foreground: oklch(0.21 0.008 70);
+  --warm-paper: oklch(0.175 0.003 80);
+  --warm-paper-shell: oklch(0.215 0.004 80);
+}
+
+/* shadcn's semantic roles, resolved to the theme. Declared on both scopes so
+   they recompute wherever .dark is applied, including portalled popups. */
+:root,
+.dark {
+  --background: var(--neutral-1);
+  --foreground: var(--neutral-10);
+  /* The board and preview panels: warm paper on a slightly deeper warm shell,
+     so the inset reads as the lighter surface without going clinical white. */
+  --paper: var(--warm-paper);
+  --paper-shell: var(--warm-paper-shell);
+  --card: var(--neutral-1);
+  --card-foreground: var(--neutral-10);
+  --popover: var(--neutral-1);
+  --popover-foreground: var(--neutral-10);
+  --primary: var(--warm-ink);
+  --primary-foreground: var(--warm-ink-foreground);
+  --secondary: var(--neutral-3);
+  --secondary-foreground: var(--neutral-10);
+  --muted: var(--neutral-3);
+  --muted-foreground: var(--neutral-7);
+  --accent: var(--neutral-3);
+  --accent-foreground: var(--neutral-10);
+  --destructive: var(--error);
+  --border: var(--neutral-4);
+  --input: var(--neutral-4);
+  --ring: var(--color-1);
+  --chart-1: var(--color-5);
+  --chart-2: var(--color-3);
+  --chart-3: var(--color-4);
+  --chart-4: var(--color-2);
+  --chart-5: var(--neutral-6);
+  --sidebar: var(--neutral-2);
+  --sidebar-foreground: var(--neutral-10);
+  --sidebar-primary: var(--neutral-10);
+  --sidebar-primary-foreground: var(--neutral-1);
+  --sidebar-accent: var(--neutral-3);
+  --sidebar-accent-foreground: var(--neutral-10);
+  --sidebar-border: var(--neutral-4);
+  --sidebar-ring: var(--color-1);
+  /* Modal scrim. */
+  --backdrop: var(--neutral-10-transparent);
+}
+
+/* Dark popups and raised cards sit one step above the canvas. */
+.dark {
+  --card: var(--neutral-2);
+  --popover: var(--neutral-2);
+  --backdrop: var(--neutral-1-transparent);
+}
+
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-heading: var(--font-brand);
+  --font-data: var(--font-data);
+  --font-mono: "GT America Mono", ui-monospace, monospace;
+  --font-weight-normal: var(--weight-ui-regular);
+  --font-weight-medium: var(--weight-ui-medium);
+  --font-weight-semibold: var(--weight-ui-heavy);
+
+  /* Tailwind's text steps resolve to the theme's: each carries its size,
+     line height and default tracking together. */
+  --text-2xs: var(--size-xxs);
+  --text-2xs--line-height: var(--line-xxs);
+  --text-2xs--letter-spacing: var(--letter-spacing-xxs);
+  --text-xs: var(--size-xs);
+  --text-xs--line-height: var(--line-xs);
+  --text-xs--letter-spacing: var(--letter-spacing-xs);
+  --text-sm: var(--size-s);
+  --text-sm--line-height: var(--line-s);
+  --text-sm--letter-spacing: var(--letter-spacing-s);
+  --text-base: var(--size-m);
+  --text-base--line-height: var(--line-m);
+  --text-base--letter-spacing: var(--letter-spacing-m);
+  --text-lg: var(--size-m);
+  --text-lg--line-height: var(--line-m);
+  --text-lg--letter-spacing: var(--letter-spacing-m);
+  --text-xl: var(--size-l);
+  --text-xl--line-height: var(--line-l);
+  --text-xl--letter-spacing: var(--letter-spacing-l);
+  --text-2xl: var(--size-l);
+  --text-2xl--line-height: var(--line-l);
+  --text-2xl--letter-spacing: var(--letter-spacing-l);
+  --text-3xl: var(--size-xl);
+  --text-3xl--line-height: var(--line-xl);
+  --text-3xl--letter-spacing: var(--letter-spacing-xl);
+  --text-4xl: var(--size-xl);
+  --text-4xl--line-height: var(--line-xl);
+  --text-4xl--letter-spacing: var(--letter-spacing-xl);
+  --text-5xl: var(--size-xxl);
+  --text-5xl--line-height: var(--line-xxl);
+  --text-5xl--letter-spacing: var(--letter-spacing-xxl);
+  --text-6xl: var(--size-xxl);
+  --text-6xl--line-height: var(--line-xxl);
+  --text-6xl--letter-spacing: var(--letter-spacing-xxl);
+  --tracking-tighter: var(--tracking-xs);
+  --tracking-tight: var(--tracking-s);
+  --tracking-normal: var(--tracking-m);
+  --tracking-wide: var(--tracking-l);
+  --tracking-wider: var(--tracking-xl);
+  --tracking-widest: var(--tracking-xl);
+
+  /* Tailwind's radius and shadow steps resolve to the theme's. */
+  --radius-sm: var(--radius-xs);
+  --radius-md: var(--radius-s);
+  --radius-lg: var(--radius-s);
+  --radius-xl: var(--radius-m);
+  --radius-2xl: var(--radius-l);
+  --radius-3xl: var(--radius-l);
+  --radius-4xl: var(--radius-xl);
+  --shadow-2xs: var(--shadow-s);
+  --shadow-xs: var(--shadow-s);
+  --shadow-sm: var(--shadow-s);
+  --shadow-md: var(--shadow-m);
+  --shadow-lg: var(--shadow-l);
+  --shadow-xl: var(--shadow-l);
+  --shadow-2xl: var(--shadow-l);
+  --ease-out: var(--motion-easing);
+  --default-transition-duration: var(--motion-duration);
+  --default-transition-timing-function: var(--motion-easing);
+
+  /* Placeholders should read as busy, not calm: 0.9s vs the 2s default. */
+  --animate-pulse-fast: pulse 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  /* Theme colors by name: bg-neutral-3, text-success, bg-error-transparent. */
+  --color-color-1: var(--color-1);
+  --color-color-1-transparent: var(--color-1-transparent);
+  --color-color-2: var(--color-2);
+  --color-color-2-transparent: var(--color-2-transparent);
+  --color-color-3: var(--color-3);
+  --color-color-3-transparent: var(--color-3-transparent);
+  --color-color-4: var(--color-4);
+  --color-color-4-transparent: var(--color-4-transparent);
+  --color-color-5: var(--color-5);
+  --color-color-5-transparent: var(--color-5-transparent);
+  --color-neutral-1: var(--neutral-1);
+  --color-neutral-1-transparent: var(--neutral-1-transparent);
+  --color-neutral-2: var(--neutral-2);
+  --color-neutral-2-transparent: var(--neutral-2-transparent);
+  --color-neutral-3: var(--neutral-3);
+  --color-neutral-3-transparent: var(--neutral-3-transparent);
+  --color-neutral-4: var(--neutral-4);
+  --color-neutral-4-transparent: var(--neutral-4-transparent);
+  --color-neutral-5: var(--neutral-5);
+  --color-neutral-5-transparent: var(--neutral-5-transparent);
+  --color-neutral-6: var(--neutral-6);
+  --color-neutral-6-transparent: var(--neutral-6-transparent);
+  --color-neutral-7: var(--neutral-7);
+  --color-neutral-7-transparent: var(--neutral-7-transparent);
+  --color-neutral-8: var(--neutral-8);
+  --color-neutral-8-transparent: var(--neutral-8-transparent);
+  --color-neutral-9: var(--neutral-9);
+  --color-neutral-9-transparent: var(--neutral-9-transparent);
+  --color-neutral-10: var(--neutral-10);
+  --color-neutral-10-transparent: var(--neutral-10-transparent);
+  --color-success: var(--success);
+  --color-success-transparent: var(--success-transparent);
+  --color-warning: var(--warning);
+  --color-warning-transparent: var(--warning-transparent);
+  --color-error: var(--error);
+  --color-error-transparent: var(--error-transparent);
+  --color-backdrop: var(--backdrop);
+  --color-paper: var(--paper);
+  --color-paper-shell: var(--paper-shell);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    outline-color: color-mix(in srgb, var(--color-1) 55%, transparent);
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Inherited by every wrapping label, heading and paragraph, popups too. */
+    text-wrap: pretty;
+  }
+  /* Pages on the paper surface (the storefront and its create flow) paint the
+     body to match, so mobile browser bars and overscroll show paper too. */
+  body:has([data-page-surface="paper"]) {
+    @apply bg-paper;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* The theme's keyboard focus outline. Wins over a component's outline-none. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: var(--focus-ring-outline);
+  }
+}
+
+/* Raised controls (primary, secondary and danger buttons): a soft top-lit
+   gradient, with the bevel composed into each control's box shadow. */
+@utility surface-raised {
+  background-image: var(--raised-image);
+}
+
+/* Recessed fields: text inputs and textareas. */
+@utility surface-recessed {
+  background-image: var(--surface-recessed-image);
+}
+
+/* Theme motion for transitions and tw-animate enter/exit. Small: controls,
+   menus, tooltips, popovers. Large: dialogs, sheets, toasts, disclosures. */
+@utility motion-small {
+  --tw-duration: var(--motion-duration);
+  --tw-ease: var(--motion-easing);
+}
+@utility motion-large {
+  --tw-duration: var(--motion-large-duration);
+  --tw-ease: var(--motion-large-easing);
+}
+/* The theme's popup scale for tw-animate enter/exit on menus, tooltips and
+   dialogs. Kept separate so a deliberate zoom elsewhere is left alone. */
+@utility motion-popup {
+  --tw-enter-scale: var(--motion-popup-scale);
+  --tw-exit-scale: var(--motion-popup-scale);
+}
+
+/* The Flappy invitation's bird, bobbing with its wing beating. */
+@keyframes bird-bob {
+  0%,
+  100% {
+    translate: 0 -1.5px;
+  }
+  50% {
+    translate: 0 1.5px;
+  }
+}
+@keyframes bird-flap {
+  from {
+    rotate: -18deg;
+  }
+  to {
+    rotate: 14deg;
+  }
+}
+
+/* Flappy's how-to-play: a finger taps, a ring spreads from the tap, or
+   the space bar presses. */
+@keyframes tap-hand {
+  0%,
+  100% {
+    translate: 0 0;
+    scale: 1;
+  }
+  14% {
+    translate: 0 3px;
+    scale: 0.9;
+  }
+  30% {
+    translate: 0 0;
+    scale: 1;
+  }
+}
+@keyframes tap-ripple {
+  0%,
+  10% {
+    scale: 0.3;
+    opacity: 0;
+  }
+  16% {
+    scale: 0.4;
+    opacity: 0.45;
+  }
+  65%,
+  100% {
+    scale: 1.5;
+    opacity: 0;
+  }
+}
+@keyframes key-press {
+  0%,
+  30%,
+  100% {
+    translate: 0 0;
+    box-shadow: 0 2px 0 var(--border);
+  }
+  10%,
+  20% {
+    translate: 0 2px;
+    box-shadow: 0 0 0 var(--border);
+  }
+}
+
+.dither-veil {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+/* The results page's reveal: each loading frame morphs into its artwork's
+   card. The blur mid-flight hides the frame and card trading places. */
+::view-transition-group(.morph) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+::view-transition-image-pair(.morph) {
+  animation-name: via-blur;
+}
+@keyframes via-blur {
+  30% {
+    filter: blur(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
