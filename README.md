@@ -1,6 +1,6 @@
 # pluto-store
 
-A narrow creator-commerce MVP: **Store → Upload → Transform → Choose → Poster → Checkout → Fulfillment**.
+test A narrow creator-commerce MVP: **Store → Upload → Transform → Choose → Poster → Checkout → Fulfillment**.
 
 Next.js 16 App Router, React, strict TypeScript, Tailwind, shadcn primitives, Supabase, OpenAI image editing, Stripe Checkout and Gelato. Customer accounts, carts, payouts and the wider creator platform are intentionally outside scope.
 
