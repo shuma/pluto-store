@@ -179,14 +179,6 @@ export function ArtworkResults({
               This usually takes a minute or two. Keep this page open and your
               artworks will appear here.
             </p>
-            <button
-              type="button"
-              onClick={() => retry.mutate()}
-              disabled={busy}
-              className="mt-4 text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:text-neutral-6"
-            >
-              Taking a while? Check again
-            </button>
           </div>
           {offered && !playing && (
             <WaitingGameInvite onClick={() => setPlaying(true)} />
