@@ -5,9 +5,10 @@ import { ownedStore } from "@/lib/auth";
 import { adminDb, check } from "@/lib/supabase/admin";
 import { HttpError } from "@/lib/http";
 import sharp from "sharp";
-import { download, put, verifyImage } from "@/lib/storage";
+import { displayCopy, download, put, verifyImage } from "@/lib/storage";
 import { addPreviewCard, setCardSample } from "@/lib/stores/style-preview";
 import { imageMime, MAX_UPLOAD_BYTES } from "@/lib/validation/schemas";
+import { MAX_EXAMPLES } from "@/lib/domain";
 const kindSchema = z.enum(["avatar", "hero", "reference", "example", "sample"]);
 // A preview sample is usually a real photo of a person, so it stays in the
 // private bucket beside the references rather than the public asset one.
@@ -61,23 +62,32 @@ async function trimPadding(
 export async function finishAsset(input: unknown) {
   const store = await ownedStore();
   if (!store) throw new HttpError(400, "Save your store first.");
-  const { path, kind, previewId } = z
+  const { path, kind, previewId, sourcePath } = z
     .object({
       path: z.string(),
       kind: kindSchema,
       previewId: z.uuid().optional(),
+      // An example's original photo, uploaded beside its artwork.
+      sourcePath: z.string().optional(),
     })
     .parse(input);
-  if (!new RegExp(`^${store.id}/${kind}/[a-f0-9-]{36}$`).test(path))
+  const owned = (p: string) =>
+    new RegExp(`^${store.id}/${kind}/[a-f0-9-]{36}$`).test(p);
+  if (!owned(path) || (sourcePath !== undefined && !owned(sourcePath)))
     throw new HttpError(403, "Invalid asset.");
+  if (kind === "example" && !sourcePath)
+    throw new HttpError(400, "Add the original photo too.");
   const bucket = privateKinds.has(kind)
       ? "creator-reference-images"
       : "creator-assets",
     db = adminDb();
-  const bytes = await trimPadding(
+  const verified = await trimPadding(
     await verifyImage(await download(bucket, path)),
     kind,
   );
+  // Examples are shown to every storefront visitor, so they are kept at a
+  // display size rather than as the full-size original.
+  const bytes = kind === "example" ? await displayCopy(verified) : verified;
   const normalized = `${path}.jpg`;
   await put(bucket, normalized, bytes, "image/jpeg");
   let created: string | undefined;
@@ -113,15 +123,35 @@ export async function finishAsset(input: unknown) {
       await db.storage.from(bucket).remove([normalized, path]);
       throw error;
     }
-  } else if (kind === "example") {
-    const { data } = db.storage.from(bucket).getPublicUrl(normalized);
+  } else if (kind === "example" && sourcePath) {
+    const { count, error: countError } = await db
+      .from("creator_examples")
+      .select("id", { count: "exact", head: true })
+      .eq("creator_id", store.id);
+    check(countError);
+    if ((count ?? 0) >= MAX_EXAMPLES)
+      throw new HttpError(400, `Show up to ${MAX_EXAMPLES} examples.`);
+    // The photo is shown as it was taken, so it is verified but not trimmed.
+    const source = `${sourcePath}.jpg`;
+    await put(
+      bucket,
+      source,
+      await displayCopy(await verifyImage(await download(bucket, sourcePath))),
+      "image/jpeg",
+    );
+    const publicUrl = (p: string) =>
+      db.storage.from(bucket).getPublicUrl(p).data.publicUrl;
     check(
       (
-        await db
-          .from("creator_examples")
-          .insert({ creator_id: store.id, image_url: data.publicUrl })
+        await db.from("creator_examples").insert({
+          creator_id: store.id,
+          image_url: publicUrl(normalized),
+          source_url: publicUrl(source),
+          sort_order: count ?? 0,
+        })
       ).error,
     );
+    check((await db.storage.from(bucket).remove([sourcePath])).error);
   } else {
     const { data } = db.storage.from(bucket).getPublicUrl(normalized);
     check(

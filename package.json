@@ -18,6 +18,7 @@
     "compare:images": "node --conditions=react-server --import tsx scripts/compare-image-variants.ts",
     "trim:references": "node --import tsx scripts/trim-reference-padding.ts",
     "backfill:dimensions": "node --import tsx scripts/backfill-reference-dimensions.ts",
+    "remove:orphan-examples": "node --import tsx scripts/remove-orphan-examples.ts",
     "mockups:scenes": "node --import tsx scripts/generate-mockup-scenes.ts",
     "test:browser": "playwright test",
     "format": "prettier --write ."

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   ImageUp,
@@ -9,16 +10,18 @@ import {
   Plus,
   RotateCw,
   Sparkles,
+  Store,
   Trash2,
   X,
   ZoomIn,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PANEL_INSET, PanelSection } from "@/components/panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PreviewViewer } from "@/components/preview-viewer";
+import { PreviewViewer, VIEWER_CONTROL } from "@/components/preview-viewer";
 import type { RefineStatus } from "@/components/refine-frame";
 import { LiveFrame } from "@/components/live-frame";
 import { post } from "@/lib/client-api";
@@ -151,6 +154,7 @@ function SettledFrame({ src, alt }: { src: string; alt: string }) {
   );
 }
 export function StylePreview() {
+  const router = useRouter();
   const query = stylePreviewQuery();
   const { data, error } = useQuery(query);
   const queryClient = useQueryClient();
@@ -193,6 +197,20 @@ export function StylePreview() {
   const remove = useMutation({
     mutationFn: (id: string) => del(`/api/creator/preview/${id}`),
     onSuccess: settle,
+  });
+  const publish = useMutation({
+    mutationFn: (previewId: string) =>
+      post<Preview>("/api/creator/examples/publish", { previewId }),
+    onSuccess: (next) => {
+      settle(next);
+      toast("Added to your storefront", {
+        action: {
+          label: "View",
+          onClick: () => router.push("/dashboard/store"),
+        },
+      });
+    },
+    onError: (error) => toast.error(error.message),
   });
   // Removal is deferred rather than undone, as on the board: the card and its
   // files are only deleted once the undo window closes, and leaving the page
@@ -606,6 +624,42 @@ export function StylePreview() {
             items={viewable}
             openId={viewing}
             onOpenChange={setViewing}
+            actions={(item) => {
+              const card = cards.find((c) => c.id === item.id);
+              if (!card) return null;
+              const publishing =
+                publish.isPending && publish.variables === card.id;
+              return card.published ? (
+                <span className="flex h-9 items-center gap-2 rounded-full bg-white/10 px-4 text-xs font-medium text-white">
+                  <Check className="size-4" />
+                  On your storefront
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={publishing}
+                    onClick={() => publish.mutate(card.id)}
+                    className={cn(VIEWER_CONTROL, "flex h-9 gap-2 px-4")}
+                  >
+                    {publishing ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Store className="size-4" />
+                    )}
+                    <span className="text-xs font-medium">
+                      Show on storefront
+                    </span>
+                  </button>
+                  {/* An uploaded sample is usually a real person. */}
+                  {card.sampleUrl && (
+                    <span className="text-xs text-white/60">
+                      Your sample photo is shown too
+                    </span>
+                  )}
+                </>
+              );
+            }}
           />
           <input
             ref={input}

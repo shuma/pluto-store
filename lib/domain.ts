@@ -1,5 +1,15 @@
 import { z } from "zod";
 import { currencySchema, DEFAULT_CURRENCY } from "@/lib/currency";
+// A storefront example: the photo that went in and the artwork that came out.
+export const exampleRow = z.object({
+  id: z.uuid(),
+  image_url: z.string(),
+  source_url: z.string(),
+  caption: z.string(),
+});
+export type Example = z.infer<typeof exampleRow>;
+// The storefront shows this many, so more would be added and never appear.
+export const MAX_EXAMPLES = 12;
 export const storeRow = z.object({
   id: z.uuid(),
   owner_user_id: z.uuid().nullable(),

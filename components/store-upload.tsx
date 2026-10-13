@@ -2,7 +2,9 @@
 import { useRef } from "react";
 import { ArrowRight, ImagePlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Example } from "@/lib/domain";
 import { usePhotoUpload } from "./upload-flow";
+import { ExampleCarousel } from "./example-carousel";
 
 // The store's one action. Tapping it opens the photo picker straight away;
 // once a photo is chosen the card shows it, and one more tap starts the
@@ -15,8 +17,8 @@ export function StoreUpload({
   priceLine,
 }: {
   slug: string;
-  // A few pieces in the creator's style, shown until a photo is chosen.
-  examples: { id: string; image_url: string; caption: string }[];
+  // Before/after pairs in the creator's style, shown until a photo is chosen.
+  examples: Example[];
   priceLine: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -46,25 +48,7 @@ export function StoreUpload({
           />
         </div>
       ) : (
-        examples.length > 0 && (
-          <div className="grid grid-cols-3 gap-1">
-            {examples.slice(0, 3).map((example, i) => (
-              <img
-                key={example.id}
-                src={example.image_url}
-                alt={example.caption}
-                className={
-                  "aspect-[.75] w-full bg-muted object-cover " +
-                  (i === 0
-                    ? "rounded-l-2xl rounded-r-md"
-                    : i === Math.min(examples.length, 3) - 1
-                      ? "rounded-l-md rounded-r-2xl"
-                      : "rounded-md")
-                }
-              />
-            ))}
-          </div>
-        )
+        <ExampleCarousel examples={examples} />
       )}
       <div className="px-3 pt-4 pb-2 text-center">
         <h2 className="text-lg font-semibold">

@@ -5,19 +5,17 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { z } from "zod";
 import { adminDb, check } from "@/lib/supabase/admin";
-import {
-  cachedSignedUrl,
-  download,
-  put,
-  type Transform,
-} from "@/lib/storage";
+import { cachedSignedUrl, download, put, type Transform } from "@/lib/storage";
 import { OpenAIImageTransformProvider } from "@/lib/ai/providers/openai";
 import { logError } from "@/lib/logging";
 import { recordUsage } from "@/lib/ai/usage";
 import { HttpError } from "@/lib/http";
 import type { StylePreview } from "@/lib/queries/style-preview";
+import { MAX_EXAMPLES } from "@/lib/domain";
 const BUCKET = "creator-reference-images";
+const PUBLIC_BUCKET = "creator-assets";
 const SAMPLE = "public/demo/sample-photo.svg";
+const DEFAULT_SAMPLE_URL = "/demo/sample-photo.svg";
 export const MAX_PREVIEW_CARDS = 4;
 // A preview costs a real generation, so it gets its own daily budget.
 export const previewBudgetKey = (creatorId: string) =>
@@ -132,10 +130,11 @@ export async function readStylePreview(
   creatorId: string,
   transform?: Transform,
 ): Promise<StylePreview> {
-  const [cards, references, budget] = await Promise.all([
+  const [cards, references, budget, published] = await Promise.all([
     previewCards(creatorId),
     activeReferences(creatorId),
     previewBudget(creatorId),
+    publishedPreviews(creatorId),
   ]);
   return {
     cards: await Promise.all(
@@ -155,12 +154,82 @@ export async function readStylePreview(
         stale:
           row.signature !== null &&
           row.signature !== boardSignature(references, row.sample_path),
+        published: published.has(row.id),
       })),
     ),
     referenceCount: references.length,
     maxCards: MAX_PREVIEW_CARDS,
     budget,
   };
+}
+// Which previews already have a storefront example made from them.
+async function publishedPreviews(creatorId: string) {
+  const { data, error } = await adminDb()
+    .from("creator_examples")
+    .select("style_preview_id")
+    .eq("creator_id", creatorId)
+    .not("style_preview_id", "is", null);
+  check(error);
+  return new Set((data ?? []).map((r) => r.style_preview_id));
+}
+// Puts a finished preview on the storefront as a before/after example. The
+// files are copied into the public bucket rather than linked, so re-running or
+// removing the preview later never changes what customers see, and the private
+// bucket stays private. The built-in sample is already public.
+export async function publishPreview(creatorId: string, id: string) {
+  const card = await ownedCard(creatorId, id);
+  if (card.status !== "ready" || !card.storage_path)
+    throw new HttpError(409, "Wait for this preview to finish first.");
+  const db = adminDb();
+  if ((await publishedPreviews(creatorId)).has(card.id)) return;
+  const { count, error: countError } = await db
+    .from("creator_examples")
+    .select("id", { count: "exact", head: true })
+    .eq("creator_id", creatorId);
+  check(countError);
+  if ((count ?? 0) >= MAX_EXAMPLES)
+    throw new HttpError(
+      400,
+      `Your storefront shows up to ${MAX_EXAMPLES} examples. Remove one under Your store first.`,
+    );
+  const base = `${creatorId}/example/${randomUUID()}`;
+  const after = `${base}-after.webp`;
+  const before = card.sample_path ? `${base}-before.jpg` : null;
+  const files = [after, ...(before ? [before] : [])];
+  // A copy that fails halfway would otherwise leave the other file behind.
+  try {
+    await Promise.all([
+      download(BUCKET, card.storage_path).then((bytes) =>
+        put(PUBLIC_BUCKET, after, bytes, "image/webp"),
+      ),
+      card.sample_path &&
+        before &&
+        // Samples are stored at full size, often several megabytes: far more
+        // than the storefront shows, and slow enough to copy that the request
+        // timed out.
+        download(BUCKET, card.sample_path, {
+          width: 1200,
+          height: 1200,
+        }).then((bytes) => put(PUBLIC_BUCKET, before, bytes, "image/jpeg")),
+    ]);
+  } catch (error) {
+    await db.storage.from(PUBLIC_BUCKET).remove(files);
+    throw error;
+  }
+  const publicUrl = (p: string) =>
+    db.storage.from(PUBLIC_BUCKET).getPublicUrl(p).data.publicUrl;
+  const { error } = await db.from("creator_examples").insert({
+    creator_id: creatorId,
+    image_url: publicUrl(after),
+    source_url: before ? publicUrl(before) : DEFAULT_SAMPLE_URL,
+    style_preview_id: card.id,
+    sort_order: count ?? 0,
+  });
+  if (error) {
+    await db.storage.from(PUBLIC_BUCKET).remove(files);
+    // A double click got there first; it is published either way.
+    if (error.code !== "23505") check(error);
+  }
 }
 // A new card takes the lowest free position. Returns its id so the caller can
 // run it straight away.

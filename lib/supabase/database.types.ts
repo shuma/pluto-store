@@ -162,6 +162,8 @@ export type Database = {
           id: string;
           image_url: string;
           sort_order: number;
+          source_url: string;
+          style_preview_id: string | null;
         };
         Insert: {
           caption?: string;
@@ -170,6 +172,8 @@ export type Database = {
           id?: string;
           image_url: string;
           sort_order?: number;
+          source_url: string;
+          style_preview_id?: string | null;
         };
         Update: {
           caption?: string;
@@ -178,6 +182,8 @@ export type Database = {
           id?: string;
           image_url?: string;
           sort_order?: number;
+          source_url?: string;
+          style_preview_id?: string | null;
         };
         Relationships: [
           {
@@ -185,6 +191,13 @@ export type Database = {
             columns: ["creator_id"];
             isOneToOne: false;
             referencedRelation: "creators";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "creator_examples_style_preview_id_fkey";
+            columns: ["style_preview_id"];
+            isOneToOne: true;
+            referencedRelation: "creator_style_previews";
             referencedColumns: ["id"];
           },
         ];

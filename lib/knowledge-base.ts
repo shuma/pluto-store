@@ -67,7 +67,7 @@ export const KNOWLEDGE_BASE = [
       {
         question: "Will customers ever see these images?",
         answer:
-          "No. Your reference images stay private and are never shown on your storefront. The artwork customers can see publicly lives under Your store, in the “On your storefront” section.",
+          "No. Your reference images stay private and are never shown on your storefront. What customers see are your before-and-after examples: a photo and the artwork made from it. Add them under Your store, in the “Before and after” section, or publish a style preview from its full-size view with “Show on storefront”. A published preview includes its sample photo, so only use photos you have permission to show.",
       },
       {
         question: "What rights do I need to the images I add?",

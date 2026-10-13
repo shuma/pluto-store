@@ -1,6 +1,6 @@
 import { browserDb } from "@/lib/supabase/client";
 import { imageMime, MAX_UPLOAD_BYTES } from "@/lib/validation/schemas";
-import { post } from "@/lib/client-api";
+import { post, send } from "@/lib/client-api";
 export type AssetKind = "avatar" | "hero" | "reference" | "example" | "sample";
 // The two-step creator upload: ask the server for a scoped signed URL, put the
 // file straight into storage, then let the server verify and record it. Shared
@@ -11,6 +11,24 @@ export async function uploadCreatorAsset(
   // Which style preview card a sample belongs to; none starts a new card.
   previewId?: string,
 ): Promise<{ previewId?: string }> {
+  const path = await store(kind, file);
+  return send("PATCH", "/api/creator/assets", { path, kind, previewId });
+}
+// A storefront example is two files recorded together: the original photo and
+// the artwork made from it.
+export async function uploadExamplePair(photo: File, artwork: File) {
+  const [sourcePath, path] = await Promise.all([
+    store("example", photo),
+    store("example", artwork),
+  ]);
+  await send("PATCH", "/api/creator/assets", {
+    path,
+    sourcePath,
+    kind: "example",
+  });
+}
+// The first step: the file in storage, not yet verified or recorded.
+async function store(kind: AssetKind, file: File) {
   if (!imageMime.safeParse(file.type).success || file.size > MAX_UPLOAD_BYTES)
     throw new Error("Choose a JPEG, PNG or WebP smaller than 10 MB.");
   const upload = await post<{
@@ -22,12 +40,5 @@ export async function uploadCreatorAsset(
     .storage.from(upload.bucket)
     .uploadToSignedUrl(upload.path, upload.uploadToken, file);
   if (error) throw new Error("Upload failed.");
-  const response = await fetch("/api/creator/assets", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: upload.path, kind, previewId }),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error);
-  return data;
+  return upload.path;
 }

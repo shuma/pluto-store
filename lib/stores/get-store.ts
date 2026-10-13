@@ -1,8 +1,13 @@
 import "server-only";
-import { z } from "zod";
 import { cache } from "react";
 import { adminDb, check } from "@/lib/supabase/admin";
-import { storeRow, productRow, type Store } from "@/lib/domain";
+import {
+  storeRow,
+  productRow,
+  exampleRow,
+  MAX_EXAMPLES,
+  type Store,
+} from "@/lib/domain";
 import { storeSlugSchema } from "@/lib/store-slugs";
 export const getStore = cache(async (slug: string) => {
   if (!storeSlugSchema.safeParse(slug).success) return null;
@@ -32,13 +37,10 @@ export async function getProducts(store: Pick<Store, "id" | "currency">) {
 export async function getExamples(creatorId: string) {
   const { data, error } = await adminDb()
     .from("creator_examples")
-    .select("id,image_url,caption")
+    .select("id,image_url,source_url,caption")
     .eq("creator_id", creatorId)
     .order("sort_order")
-    .limit(12);
+    .limit(MAX_EXAMPLES);
   check(error);
-  return z
-    .object({ id: z.uuid(), image_url: z.string(), caption: z.string() })
-    .array()
-    .parse(data);
+  return exampleRow.array().parse(data);
 }

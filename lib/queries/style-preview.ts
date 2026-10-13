@@ -8,6 +8,8 @@ export type PreviewCard = {
   // Null means the built-in sample at /demo/sample-photo.svg.
   sampleUrl: string | null;
   stale: boolean;
+  // Already shown on the storefront as a before/after example.
+  published: boolean;
 };
 export type StylePreview = {
   // In the creator's order; the first is always there, on the built-in sample

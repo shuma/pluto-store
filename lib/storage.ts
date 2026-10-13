@@ -57,15 +57,27 @@ export function resizedPublicUrl(url: string, { width, height }: Transform) {
   const object = `${required("NEXT_PUBLIC_SUPABASE_URL")}/storage/v1/object/public/`;
   if (!url.startsWith(object)) return url;
   const resized = new URL(
-    url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/"),
+    url.replace(
+      "/storage/v1/object/public/",
+      "/storage/v1/render/image/public/",
+    ),
   );
   resized.searchParams.set("width", String(width));
   resized.searchParams.set("height", String(height));
   resized.searchParams.set("resize", "contain");
   return resized.toString();
 }
-export async function download(bucket: string, path: string) {
-  const { data, error } = await adminDb().storage.from(bucket).download(path);
+export async function download(
+  bucket: string,
+  path: string,
+  transform?: Transform,
+) {
+  const { data, error } = await adminDb()
+    .storage.from(bucket)
+    .download(
+      path,
+      transform && { transform: { ...transform, resize: "contain" } },
+    );
   check(error);
   if (!data) throw new Error("Image missing");
   return Buffer.from(await data.arrayBuffer());
