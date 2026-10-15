@@ -115,6 +115,11 @@
   --size-m: 16px;
   --line-m: 24px;
   --letter-spacing-m: 0em;
+  /* Between body and section heading: a heading that has to hold one line
+     on a phone, where 24px would wrap. */
+  --size-ml: 20px;
+  --line-ml: 28px;
+  --letter-spacing-ml: var(--tracking-s);
   --size-l: 24px;
   --line-l: 32px;
   --letter-spacing-l: -0.01em;
@@ -407,6 +412,9 @@
   --text-lg: var(--size-m);
   --text-lg--line-height: var(--line-m);
   --text-lg--letter-spacing: var(--letter-spacing-m);
+  --text-ml: var(--size-ml);
+  --text-ml--line-height: var(--line-ml);
+  --text-ml--letter-spacing: var(--letter-spacing-ml);
   --text-xl: var(--size-l);
   --text-xl--line-height: var(--line-l);
   --text-xl--letter-spacing: var(--letter-spacing-l);
