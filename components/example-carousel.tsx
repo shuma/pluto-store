@@ -26,9 +26,8 @@ export function ExampleCarousel({ examples }: { examples: Example[] }) {
       aria-roledescription="carousel"
       aria-label="Examples"
       // Set on the same paper as the photo preview and the poster pages, so a
-      // portrait leaves a mat around it rather than bare white gutters. The
-      // mat runs edge to edge in its card rather than as a box inside a box.
-      className="group/carousel relative bg-paper-shell p-4"
+      // portrait leaves a mat around it rather than bare white gutters.
+      className="group/carousel relative rounded-2xl bg-paper-shell p-4"
     >
       <ul
         ref={rail}
@@ -46,7 +45,7 @@ export function ExampleCarousel({ examples }: { examples: Example[] }) {
             // Every slide is the same height, so the rail doesn't jump between
             // pictures of different shapes; each card is as wide as its own
             // picture needs and centred in the slide.
-            className="flex h-[min(20rem,38svh)] sm:h-[min(26rem,60svh)] w-full shrink-0 snap-center snap-always justify-center"
+            className="flex h-[min(22rem,50svh)] sm:h-[min(26rem,60svh)] w-full shrink-0 snap-center snap-always justify-center"
           >
             <BeforeAfterCard
               artUrl={example.image_url}

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStore, getExamples } from "@/lib/stores/get-store";
+import { getStore, getProducts, getExamples } from "@/lib/stores/get-store";
 import { StoreUpload } from "@/components/store-upload";
+import { money } from "@/lib/payments/pricing";
 import { track } from "@/lib/analytics";
 import { ownedStore } from "@/lib/auth";
 import { HttpError } from "@/lib/http";
@@ -37,8 +38,14 @@ export default async function Storefront({
       ? await previewStore(storeSlug)
       : await getStore(storeSlug);
   if (!store) notFound();
-  const examples = await getExamples(store.id);
+  const [products, examples] = await Promise.all([
+    getProducts(store),
+    getExamples(store.id),
+  ]);
   if (preview === undefined) track("store_viewed", { creator_id: store.id });
+  const from = products[0]
+    ? `Posters from ${money(products[0].price_amount, products[0].currency)} · Delivered to your door`
+    : "Delivered to your door";
   // One narrow column, centred, like a link-in-bio page: who made the style,
   // then the one thing to do. It is laid out for a phone first; wider
   // screens get the same column with more room around it. Once a photo is
@@ -49,23 +56,23 @@ export default async function Storefront({
       {preview !== undefined && <PreviewReady />}
       <main
         id="main"
-        className="group/store mx-auto flex min-h-dvh max-w-[30rem] flex-col px-4 pt-6 pb-6 transition-[padding] group-has-[[data-chosen]]/store:pt-6 sm:pt-16 sm:group-has-[[data-chosen]]/store:pt-12"
+        className="group/store mx-auto flex min-h-dvh max-w-[30rem] flex-col px-4 pt-12 pb-6 transition-[padding] group-has-[[data-chosen]]/store:pt-6 sm:pt-16 sm:group-has-[[data-chosen]]/store:pt-12"
       >
         <header className="flex flex-col items-center text-center">
           {store.avatar_url ? (
             <img
               src={store.avatar_url}
               alt=""
-              className="size-20 rounded-full object-cover shadow-sm ring-1 ring-neutral-6-transparent transition-[width,height] group-has-[[data-chosen]]/store:size-12"
+              className="size-24 rounded-full object-cover ring-4 ring-background transition-[width,height] group-has-[[data-chosen]]/store:size-12"
             />
           ) : (
-            <span className="grid size-20 place-items-center rounded-full bg-accent text-4xl font-semibold shadow-sm ring-1 ring-neutral-6-transparent transition-[width,height] group-has-[[data-chosen]]/store:size-12 group-has-[[data-chosen]]/store:text-xl">
+            <span className="grid size-24 place-items-center rounded-full bg-accent text-4xl font-semibold ring-4 ring-background transition-[width,height] group-has-[[data-chosen]]/store:size-12 group-has-[[data-chosen]]/store:text-xl">
               {store.name.slice(0, 1)}
             </span>
           )}
           <h1
             data-preview="name"
-            className="mt-3 text-xl font-semibold group-has-[[data-chosen]]/store:mt-2 group-has-[[data-chosen]]/store:text-base"
+            className="mt-4 text-xl font-semibold group-has-[[data-chosen]]/store:mt-2 group-has-[[data-chosen]]/store:text-base"
           >
             {store.name}
           </h1>
@@ -76,10 +83,11 @@ export default async function Storefront({
             {store.description}
           </p>
         </header>
-        <div className="mt-6 group-has-[[data-chosen]]/store:mt-4">
-          <StoreUpload slug={store.slug} examples={examples} />
+        <div className="mt-8 group-has-[[data-chosen]]/store:mt-4">
+          <StoreUpload slug={store.slug} examples={examples} priceLine={from} />
           <p className="mt-3 px-4 text-center text-xs text-balance text-muted-foreground">
-            By continuing you agree to the{" "}
+            Your photo is only used to make your artwork, never for AI
+            training. By continuing you agree to the{" "}
             <Link href="/terms" className="underline underline-offset-2">
               Terms
             </Link>{" "}
