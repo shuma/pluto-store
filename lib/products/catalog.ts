@@ -138,6 +138,7 @@ export function isFramed(catalog: string | null | undefined) {
 // storefront names them. Each label reads after "Turn your photo into a".
 export const PRODUCT_KINDS = [
   { kind: "poster", label: "poster" },
+  { kind: "print", label: "mini print" },
   { kind: "framed", label: "framed print" },
   { kind: "canvas", label: "canvas" },
   { kind: "tshirt", label: "t-shirt" },
@@ -145,34 +146,50 @@ export const PRODUCT_KINDS = [
 ] as const;
 export type ProductKind = (typeof PRODUCT_KINDS)[number]["kind"];
 
-// Products without a catalog predate catalogs and are all posters.
-export function productKind(catalog: string | null | undefined): ProductKind {
+// Products without a catalog predate catalogs and are all posters. A poster
+// too small to hang (13 × 18 cm, 5 × 7 in) is a mini print, for the fridge.
+export function productKind(
+  catalog: string | null | undefined,
+  widthMm?: number,
+  heightMm?: number,
+): ProductKind {
   if (isFramed(catalog)) return "framed";
-  if (!catalog) return "poster";
-  if (/canvas/i.test(catalog)) return "canvas";
-  if (/shirt|apparel|tee/i.test(catalog)) return "tshirt";
-  if (/digital/i.test(catalog)) return "digital";
+  if (catalog && /canvas/i.test(catalog)) return "canvas";
+  if (catalog && /shirt|apparel|tee/i.test(catalog)) return "tshirt";
+  if (catalog && /digital/i.test(catalog)) return "digital";
+  if (widthMm && heightMm && isMini(widthMm, heightMm)) return "print";
   return "poster";
 }
 
+// Smaller than A5 (148 × 210 mm): photo-print sizes rather than posters.
+export function isMini(widthMm: number, heightMm: number) {
+  return widthMm * heightMm < 30_000;
+}
+
 // How big a print feels, by area, so names say something the size line
-// doesn't: A4 and 8 × 10 in are small, 70 × 100 cm and 24 × 36 in extra large.
+// doesn't: 13 × 18 cm is mini, A4 and 8 × 10 in are small, 70 × 100 cm and
+// 24 × 36 in extra large.
 export function sizeTier(widthMm: number, heightMm: number) {
   const area = widthMm * heightMm;
+  if (isMini(widthMm, heightMm)) return "Mini";
   if (area < 90_000) return "Small";
   if (area < 200_000) return "Medium";
   if (area < 400_000) return "Large";
   return "Extra large";
 }
 
-// A starting name: "Medium poster", "Large framed print". The size is shown
-// beside the name everywhere, so it isn't repeated in it.
+// A starting name: "Medium poster", "Large framed print", "Mini print". The
+// size is shown beside the name everywhere, so it isn't repeated in it.
 export function defaultTitle(
   product: Pick<CatalogProduct, "catalog" | "widthMm" | "heightMm">,
 ) {
-  return `${sizeTier(product.widthMm, product.heightMm)} ${
-    isFramed(product.catalog) ? "framed print" : "poster"
-  }`;
+  const { catalog, widthMm, heightMm } = product;
+  const noun = isFramed(catalog)
+    ? "framed print"
+    : isMini(widthMm, heightMm)
+      ? "print"
+      : "poster";
+  return `${sizeTier(widthMm, heightMm)} ${noun}`;
 }
 
 // The size to show beside a product's name, unless the name already says it

@@ -323,7 +323,7 @@ export function PosterSelection({
                   )}
                 >
                   <ProductSticker
-                    kind={productKind(p.gelato_catalog)}
+                    kind={productKind(p.gelato_catalog, p.width_mm, p.height_mm)}
                     size={size}
                     selected={on}
                     className="size-10"

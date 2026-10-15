@@ -271,6 +271,7 @@ describe("Gelato catalog client", () => {
     await searchCatalog("posters", { Sizes: ["imperial"] });
     const filters = JSON.parse(fetch.mock.calls[1][1].body).attributeFilters;
     expect(filters.UnifiedPaperFormat).toEqual([
+      "5R-130x180-mm",
       "8x10-inch-200x250-mm",
       "11x14-inch-270x350-mm",
       "12x16-inch-300x400-mm",

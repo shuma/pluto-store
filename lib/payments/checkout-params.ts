@@ -1,13 +1,15 @@
 import type Stripe from "stripe";
 import type { Order, Product } from "@/lib/domain";
-import { formatSize, isFramed } from "@/lib/products/catalog";
+import { formatSize, isFramed, isMini } from "@/lib/products/catalog";
 // What Stripe shows under the product name at checkout, true to what is being
 // bought: "Your original artwork, printed and framed. 12 × 16 in. Shipping
 // included."
 export function checkoutDescription(product: Product) {
   const what = isFramed(product.gelato_catalog)
     ? "printed and framed"
-    : "printed as an unframed poster";
+    : isMini(product.width_mm, product.height_mm)
+      ? "printed as a mini print"
+      : "printed as an unframed poster";
   return `Your original artwork, ${what}. ${formatSize(product.width_mm, product.height_mm)}. Shipping included.`;
 }
 export function checkoutParams(

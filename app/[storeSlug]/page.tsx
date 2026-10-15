@@ -45,7 +45,9 @@ export default async function Storefront({
   ]);
   if (preview === undefined) track("store_viewed", { creator_id: store.id });
   // What the store sells, as stickers in the headline, and its cheapest price.
-  const sold = new Set(products.map((p) => productKind(p.gelato_catalog)));
+  const sold = new Set(products.map((p) =>
+      productKind(p.gelato_catalog, p.width_mm, p.height_mm),
+    ),);
   const kinds = PRODUCT_KINDS.filter((k) => sold.has(k.kind));
   const cheapest = products.reduce<(typeof products)[number] | undefined>(
     (low, p) => (!low || p.price_amount < low.price_amount ? p : low),

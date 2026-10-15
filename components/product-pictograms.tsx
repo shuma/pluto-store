@@ -80,6 +80,26 @@ const framed = (
   </Sticker>
 );
 
+// A small photo print held up by a round fridge magnet, with a wide bottom
+// border like an instant photo.
+const print = (
+  <Sticker
+    outline={
+      <>
+        <rect x="15" y="13" width="34" height="44" rx="2.5" />
+        <circle cx="32" cy="12" r="7" />
+      </>
+    }
+  >
+    <rect x="15" y="13" width="34" height="44" rx="2.5" fill="#FFFDF7" />
+    <rect x="19" y="17" width="26" height="28" rx="1" fill="#FFC2B4" />
+    <circle cx="37" cy="25" r="4" fill="#FFF0A8" />
+    <path d="M19 45V36q6-7 13-1 6-6 13 1v9z" fill="#7C5CFF" />
+    <circle cx="32" cy="12" r="6" fill="#FF4F4F" />
+    <circle cx="30" cy="10" r="1.8" fill="white" opacity=".7" />
+  </Sticker>
+);
+
 // A stretched canvas, its side edge showing so it has depth, painted in
 // three loose strokes.
 const canvas = (
@@ -154,6 +174,7 @@ export const PICTOGRAMS: Record<
   { artwork: ReactNode; rotation: number }
 > = {
   poster: { artwork: poster, rotation: -9 },
+  print: { artwork: print, rotation: 6 },
   framed: { artwork: framed, rotation: 8 },
   canvas: { artwork: canvas, rotation: -6 },
   tshirt: { artwork: tshirt, rotation: 7 },

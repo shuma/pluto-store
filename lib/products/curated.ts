@@ -15,6 +15,8 @@
 // and frame-shop standards in centimetres, and the US standards in inches.
 export const SIZE_SYSTEMS = {
   metric: [
+    // 13 × 18 cm, a photo-print size, sold as a mini print for the fridge.
+    "130x180-mm-5R",
     "A4-8x12-inch",
     "210x297mm-8x12-inch",
     "300x400-mm-12x16-inch",
@@ -26,6 +28,8 @@ export const SIZE_SYSTEMS = {
     "700x1000-mm-28x40-inch",
   ],
   imperial: [
+    // 5 × 7 in, the US photo-print size.
+    "5R-130x180-mm",
     "8x10-inch-200x250-mm",
     "11x14-inch-270x350-mm",
     "12x16-inch-300x400-mm",

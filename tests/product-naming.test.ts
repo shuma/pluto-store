@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   defaultTitle,
   groupBySize,
+  productKind,
   sizeBesideName,
   sizeTier,
   type CatalogProduct,
@@ -9,6 +10,8 @@ import {
 
 describe("product naming", () => {
   it("names prints by how big they feel", () => {
+    expect(sizeTier(130, 180)).toBe("Mini");
+    expect(sizeTier(127, 177.8)).toBe("Mini"); // 5 × 7 in
     expect(sizeTier(210, 297)).toBe("Small"); // A4
     expect(sizeTier(203.2, 254)).toBe("Small"); // 8 × 10 in
     expect(sizeTier(300, 400)).toBe("Medium");
@@ -20,6 +23,15 @@ describe("product naming", () => {
     expect(
       defaultTitle({ catalog: "posters", widthMm: 304.8, heightMm: 406.4 }),
     ).toBe("Medium poster");
+    expect(
+      defaultTitle({ catalog: "posters", widthMm: 130, heightMm: 180 }),
+    ).toBe("Mini print");
+  });
+  it("calls a poster too small to hang a mini print", () => {
+    expect(productKind("posters", 130, 180)).toBe("print");
+    expect(productKind("posters", 210, 297)).toBe("poster");
+    expect(productKind("posters")).toBe("poster");
+    expect(productKind("framed-posters", 130, 180)).toBe("framed");
   });
   it("doesn't repeat a size the name already says", () => {
     expect(sizeBesideName("Medium poster", 300, 400)).toBe("30 × 40 cm");
