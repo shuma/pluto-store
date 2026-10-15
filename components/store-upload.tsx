@@ -3,8 +3,10 @@ import { useRef } from "react";
 import { ArrowRight, ImagePlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Example } from "@/lib/domain";
+import type { ProductKind } from "@/lib/products/catalog";
 import { usePhotoUpload } from "./upload-flow";
 import { ExampleCarousel } from "./example-carousel";
+import { ProductToken } from "./product-token";
 
 // The store's one action. Tapping it opens the photo picker straight away;
 // once a photo is chosen the card shows it, and one more tap starts the
@@ -15,11 +17,14 @@ export function StoreUpload({
   slug,
   examples,
   priceLine,
+  kinds,
 }: {
   slug: string;
   // Before/after pairs in the creator's style, shown until a photo is chosen.
   examples: Example[];
   priceLine: string;
+  // The kinds of product the store sells, cycled in the headline.
+  kinds: { kind: ProductKind; label: string }[];
 }) {
   const input = useRef<HTMLInputElement>(null);
   const { file, preview, busy, error, choose, submit } = usePhotoUpload(slug);
@@ -51,8 +56,14 @@ export function StoreUpload({
         <ExampleCarousel examples={examples} />
       )}
       <div className="px-3 pt-4 pb-2 text-center">
-        <h2 className="text-lg font-semibold">
-          {file ? "Happy with this photo?" : "Turn your photo into a poster"}
+        <h2 className="text-lg font-semibold [--sticker-scale:1.3]">
+          {file ? (
+            "Happy with this photo?"
+          ) : (
+            <>
+              Turn your photo into a <ProductToken kinds={kinds} />
+            </>
+          )}
         </h2>
         {!file && (
           <p className="mt-1 text-sm text-muted-foreground">{priceLine}</p>

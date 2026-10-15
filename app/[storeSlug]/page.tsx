@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getStore, getProducts, getExamples } from "@/lib/stores/get-store";
 import { StoreUpload } from "@/components/store-upload";
 import { money } from "@/lib/payments/pricing";
+import { PRODUCT_KINDS, productKind } from "@/lib/products/catalog";
 import { track } from "@/lib/analytics";
 import { ownedStore } from "@/lib/auth";
 import { HttpError } from "@/lib/http";
@@ -43,8 +44,15 @@ export default async function Storefront({
     getExamples(store.id),
   ]);
   if (preview === undefined) track("store_viewed", { creator_id: store.id });
-  const from = products[0]
-    ? `Posters from ${money(products[0].price_amount, products[0].currency)} · Delivered to your door`
+  // What the store sells, as stickers in the headline, and its cheapest price.
+  const sold = new Set(products.map((p) => productKind(p.gelato_catalog)));
+  const kinds = PRODUCT_KINDS.filter((k) => sold.has(k.kind));
+  const cheapest = products.reduce<(typeof products)[number] | undefined>(
+    (low, p) => (!low || p.price_amount < low.price_amount ? p : low),
+    undefined,
+  );
+  const from = cheapest
+    ? `From ${money(cheapest.price_amount, cheapest.currency)} · Delivered to your door`
     : "Delivered to your door";
   // One narrow column, centred, like a link-in-bio page: who made the style,
   // then the one thing to do. It is laid out for a phone first; wider
@@ -84,7 +92,7 @@ export default async function Storefront({
           </p>
         </header>
         <div className="mt-8 group-has-[[data-chosen]]/store:mt-4">
-          <StoreUpload slug={store.slug} examples={examples} priceLine={from} />
+          <StoreUpload slug={store.slug} examples={examples} priceLine={from} kinds={[...kinds]} />
           <p className="mt-3 px-4 text-center text-xs text-balance text-muted-foreground">
             Your photo is only used to make your artwork, never for AI
             training. By continuing you agree to the{" "}
