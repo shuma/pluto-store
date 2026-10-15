@@ -203,6 +203,20 @@ export function sizeBesideName(
   return name.includes(size) ? null : size;
 }
 
+// A name and its size as two parts, so every print in a list reads the same
+// way: "Poster 70 × 100 cm" shows as "Poster" and "70 × 100 cm", like
+// "Small poster" and "21 × 29.7 cm".
+export function nameAndSize(name: string, widthMm: number, heightMm: number) {
+  const size = formatSize(widthMm, heightMm);
+  const title = name
+    .replace(size, "")
+    .replace(/\s*[·,–-]\s*$/, "")
+    .replace(/^\s*[·,–-]\s*/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return { title: title || name, size };
+}
+
 // One print in the picker per size: the paper (and for framed prints, the
 // frame colour picked above) is chosen afterwards. Variants keep Gelato's
 // order within a size, matte paper first.

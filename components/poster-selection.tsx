@@ -13,7 +13,11 @@ import {
   MAX_PER_ITEM,
   MAX_PER_ORDER,
 } from "@/lib/cart/rules";
-import { isFramed, productKind } from "@/lib/products/catalog";
+import {
+  isFramed,
+  nameAndSize,
+  productKind,
+} from "@/lib/products/catalog";
 import { productDetails } from "@/lib/products/details";
 import { cn } from "@/lib/utils";
 import { PaymentMethods } from "./payment-methods";
@@ -308,6 +312,11 @@ export function PosterSelection({
               const on = p.id === productId,
                 { summary } = productDetails(p),
                 line = cart.find((i) => i.product.id === p.id),
+                { title, size: printSize } = nameAndSize(
+                  p.name,
+                  p.width_mm,
+                  p.height_mm,
+                ),
                 quantity = line?.quantity ?? 0,
                 full = count >= MAX_PER_ORDER;
               return (
@@ -338,7 +347,13 @@ export function PosterSelection({
                       aria-label={`Preview ${p.name}`}
                       className="sr-only"
                     />
-                    <span className="block text-sm font-medium">{p.name}</span>
+                    <span className="block text-sm font-medium">
+                      {title}
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {printSize}
+                      </span>
+                    </span>
                     {mixed && (
                       <span className="block text-xs text-muted-foreground">
                         {isFramed(p.gelato_catalog) ? "Framed" : "Unframed"}

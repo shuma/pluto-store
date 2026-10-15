@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   defaultTitle,
   groupBySize,
+  nameAndSize,
   productKind,
   sizeBesideName,
   sizeTier,
@@ -32,6 +33,18 @@ describe("product naming", () => {
     expect(productKind("posters", 210, 297)).toBe("poster");
     expect(productKind("posters")).toBe("poster");
     expect(productKind("framed-posters", 130, 180)).toBe("framed");
+  });
+  it("splits a size out of a name so every print reads alike", () => {
+    expect(nameAndSize("Poster 70 × 100 cm", 700, 1000)).toEqual({
+      title: "Poster",
+      size: "70 × 100 cm",
+    });
+    expect(nameAndSize("Poster – 50 × 70 cm", 500, 700).title).toBe("Poster");
+    expect(nameAndSize("Small poster", 210, 297)).toEqual({
+      title: "Small poster",
+      size: "21 × 29.7 cm",
+    });
+    expect(nameAndSize("70 × 100 cm", 700, 1000).title).toBe("70 × 100 cm");
   });
   it("doesn't repeat a size the name already says", () => {
     expect(sizeBesideName("Medium poster", 300, 400)).toBe("30 × 40 cm");
