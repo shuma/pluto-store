@@ -532,6 +532,24 @@
     @apply border-border;
     outline-color: color-mix(in srgb, var(--color-1) 55%, transparent);
   }
+  /* Tailwind v4 leaves buttons on the default arrow; anything clickable shows
+     the hand, unless it is disabled or sets its own cursor (zoom-in etc.). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  [role="checkbox"],
+  [role="switch"],
+  [role="radio"],
+  label[for],
+  select,
+  summary,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"] {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground;
     /* Inherited by every wrapping label, heading and paragraph, popups too. */

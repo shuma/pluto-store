@@ -3,7 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ImagePlus, Loader2, Plus, Trash2, X, ZoomIn } from "lucide-react";
+import {
+  ArrowRight,
+  ImagePlus,
+  Loader2,
+  Trash2,
+  X,
+  ZoomIn,
+} from "lucide-react";
 import { uploadExamplePair } from "@/lib/client-upload";
 import { post } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
@@ -215,7 +222,7 @@ function AddPair({
             permission to show.
           </DialogDescription>
           {photoUrl && artworkUrl ? (
-            <div className="mt-4">
+            <div className="mt-4 animate-in fade-in-0 zoom-in-95 motion-large">
               <BeforeAfterCard
                 artUrl={artworkUrl}
                 sourceUrl={photoUrl}
@@ -232,9 +239,16 @@ function AddPair({
               </div>
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="relative mt-4 grid grid-cols-2 gap-3">
               <Slot label="Original photo" url={photoUrl} onPick={setPhoto} />
               <Slot label="Artwork" url={artworkUrl} onPick={setArtwork} />
+              {/* Reads left to right as the photo becoming the artwork. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-1/2 grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-popover text-muted-foreground shadow-[inset_0_0_0_var(--border-s)_var(--neutral-4-transparent),var(--shadow-s)]"
+              >
+                <ArrowRight className="size-4" />
+              </span>
             </div>
           )}
           {error && (
@@ -277,8 +291,10 @@ function AddPair({
     </Dialog>
   );
 }
-// One image to pick: a large tile until it has one, or a plain text button to
-// swap it once the preview card is showing.
+const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
+
+// One image to pick, by click or drop: a large tile until it has one, or a
+// plain text button to swap it once the preview card is showing.
 function Slot({
   label,
   url,
@@ -291,11 +307,12 @@ function Slot({
   onPick: (file: File) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
   const field = (
     <input
       ref={input}
       type="file"
-      accept="image/jpeg,image/png,image/webp"
+      accept={ACCEPT.join(",")}
       className="sr-only"
       tabIndex={-1}
       aria-label={label}
@@ -322,21 +339,46 @@ function Slot({
       </>
     );
   return (
-    <div>
+    <>
       <button
         type="button"
         onClick={() => input.current?.click()}
-        className="group/slot relative grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-xl border border-dashed border-neutral-5 bg-background text-muted-foreground transition-colors hover:border-neutral-6 hover:text-foreground"
+        aria-label={url ? `Replace ${label.toLowerCase()}` : undefined}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          const file = e.dataTransfer.files[0];
+          if (file && ACCEPT.includes(file.type)) onPick(file);
+        }}
+        className={cn(
+          "relative flex aspect-[4/5] w-full *:pointer-events-none flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-dashed text-xs font-medium transition-colors",
+          dragging
+            ? "border-primary bg-accent text-foreground"
+            : url
+              ? "border-transparent"
+              : "border-neutral-5 bg-background text-muted-foreground hover:border-neutral-6 hover:text-foreground",
+        )}
       >
         {url ? (
-          <img src={url} alt="" className="size-full object-cover" />
+          <img
+            src={url}
+            alt=""
+            className="absolute inset-0 size-full object-cover"
+          />
         ) : (
-          <Plus className="size-5" />
+          <>
+            <ImagePlus className="size-5" aria-hidden />
+            {label}
+          </>
         )}
       </button>
-      <p className="mt-2 text-center text-xs font-medium">{label}</p>
       {field}
-    </div>
+    </>
   );
 }
 // A chosen file with a local URL to preview it by. The URL is made when the
