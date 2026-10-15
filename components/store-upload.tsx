@@ -31,7 +31,7 @@ export function StoreUpload({
   const pick = () => input.current?.click();
   return (
     <section
-      aria-label="Make your poster"
+      aria-label="Make your artwork"
       data-chosen={file ? "" : undefined}
       className="rounded-4xl ring-1 ring-neutral-6-transparent bg-background p-2 shadow-sm"
     >
@@ -55,20 +55,14 @@ export function StoreUpload({
       ) : (
         <ExampleCarousel examples={examples} />
       )}
-      <div className="px-3 pt-4 pb-2 text-center">
-        <h2 className="text-lg font-semibold [--sticker-scale:1.3]">
-          {file ? (
-            "Happy with this photo?"
-          ) : (
-            <>
-              Turn your photo into a <ProductToken kinds={kinds} />
-            </>
-          )}
-        </h2>
-        {!file && (
+      {!file && (
+        <div className="px-3 pt-4 pb-2 text-center">
+          <h2 className="text-lg font-semibold [--sticker-scale:1.3]">
+            Turn your photo into a <ProductToken kinds={kinds} />
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">{priceLine}</p>
-        )}
-      </div>
+        </div>
+      )}
       {error && (
         <p
           role="alert"
@@ -77,7 +71,7 @@ export function StoreUpload({
           {error}
         </p>
       )}
-      <div className="space-y-1 p-1">
+      <div className={`space-y-1 p-1 ${file ? "pt-3" : ""}`}>
         {file ? (
           <>
             <Button
@@ -93,7 +87,7 @@ export function StoreUpload({
                 </>
               ) : (
                 <>
-                  Create my poster
+                  Continue
                   <ArrowRight aria-hidden />
                 </>
               )}
