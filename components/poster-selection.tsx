@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { motion } from "motion/react";
 import { Lock, Minus, Plus, Trash2, ZoomIn } from "lucide-react";
 import { Button } from "./ui/button";
 import type { Product } from "@/lib/domain";
@@ -12,10 +13,11 @@ import {
   MAX_PER_ITEM,
   MAX_PER_ORDER,
 } from "@/lib/cart/rules";
-import { isFramed } from "@/lib/products/catalog";
+import { isFramed, productKind } from "@/lib/products/catalog";
 import { productDetails } from "@/lib/products/details";
 import { cn } from "@/lib/utils";
 import { PaymentMethods } from "./payment-methods";
+import { ProductSticker } from "./product-pictograms";
 import { PreviewViewer, type ViewerItem } from "./preview-viewer";
 import { ProductDetails } from "./product-details";
 // The quantity stepper's minus and plus: ghost icon buttons, round and a step
@@ -132,6 +134,9 @@ export function PosterSelection({
   // "Framed" or "Unframed" only tells options apart when the store sells both.
   const mixed =
     new Set(products.map((p) => isFramed(p.gelato_catalog))).size > 1;
+  const areas = products.map((p) => p.width_mm * p.height_mm),
+    largestArea = Math.max(...areas),
+    smallestArea = Math.min(...areas);
   const ratio = product ? product.width_mm / product.height_mm : 0.707;
   // Full size: the room mockup once it has arrived, and the artwork alone.
   const hasRoom = Boolean(
@@ -295,22 +300,34 @@ export function PosterSelection({
           <legend className="sr-only">Prints</legend>
           <div className="space-y-2">
             {products.map((p) => {
+              // Bigger prints get bigger stickers: the smallest size here at
+              // 80%, the largest at full size.
+              const area = p.width_mm * p.height_mm,
+                span = largestArea - smallestArea,
+                size = span ? 0.8 + (0.2 * (area - smallestArea)) / span : 1;
               const on = p.id === productId,
                 { summary } = productDetails(p),
                 line = cart.find((i) => i.product.id === p.id),
                 quantity = line?.quantity ?? 0,
                 full = count >= MAX_PER_ORDER;
               return (
-                <div
+                <motion.div
                   key={p.id}
+                  initial={false}
+                  animate="rest"
+                  whileHover="hover"
                   onClick={() => setProductId(p.id)}
                   className={cn(
                     "flex min-h-16 cursor-pointer items-center gap-3 rounded-2xl ring-1 ring-neutral-6-transparent bg-background px-4 py-3 transition-[box-shadow,border-color] has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2",
-                    on
-                      ? "ring-2 ring-foreground"
-                      : "hover:ring-neutral-6",
+                    on ? "ring-2 ring-foreground" : "hover:ring-neutral-6",
                   )}
                 >
+                  <ProductSticker
+                    kind={productKind(p.gelato_catalog)}
+                    size={size}
+                    selected={on}
+                    className="size-10"
+                  />
                   <label className="min-w-0 flex-1 cursor-pointer">
                     <input
                       type="radio"
@@ -343,7 +360,9 @@ export function PosterSelection({
                       {money(p.price_amount, p.currency)}
                     </span>
                     {quantity === 0 ? (
-                      <Button variant="outline" size="sm"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         type="button"
                         disabled={cartBusy || busy || full}
                         onClick={() => {
@@ -368,7 +387,9 @@ export function PosterSelection({
                       </Button>
                     ) : (
                       <div className="flex h-8 items-center rounded-full ring-1 ring-neutral-6-transparent bg-background">
-                        <Button variant="ghost" size="icon-sm"
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           type="button"
                           disabled={cartBusy || busy}
                           onClick={() =>
@@ -407,7 +428,9 @@ export function PosterSelection({
                         >
                           {quantity}
                         </span>
-                        <Button variant="ghost" size="icon-sm"
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           type="button"
                           disabled={
                             cartBusy || busy || quantity >= MAX_PER_ITEM || full
@@ -431,7 +454,7 @@ export function PosterSelection({
                       </div>
                     )}
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
