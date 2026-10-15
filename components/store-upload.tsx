@@ -14,21 +14,19 @@ import { ExampleCarousel } from "./example-carousel";
 export function StoreUpload({
   slug,
   examples,
-  priceLine,
 }: {
   slug: string;
   // Before/after pairs in the creator's style, shown until a photo is chosen.
   examples: Example[];
-  priceLine: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const { file, preview, busy, error, choose, submit } = usePhotoUpload(slug);
   const pick = () => input.current?.click();
   return (
     <section
-      aria-label="Make your poster"
+      aria-label="Make your artwork"
       data-chosen={file ? "" : undefined}
-      className="rounded-4xl ring-1 ring-neutral-6-transparent bg-background p-2 shadow-sm"
+      className="overflow-hidden rounded-4xl bg-background shadow-sm ring-1 ring-neutral-6-transparent"
     >
       <input
         ref={input}
@@ -40,7 +38,7 @@ export function StoreUpload({
         disabled={busy}
       />
       {preview ? (
-        <div className="grid place-items-center overflow-hidden rounded-2xl bg-paper-shell p-3">
+        <div className="grid place-items-center bg-paper-shell p-4">
           <img
             src={preview}
             alt="Your photo"
@@ -50,23 +48,20 @@ export function StoreUpload({
       ) : (
         <ExampleCarousel examples={examples} />
       )}
-      <div className="px-3 pt-4 pb-2 text-center">
-        <h2 className="text-lg font-semibold">
-          {file ? "Happy with this photo?" : "Turn your photo into a poster"}
+      {file && (
+        <h2 className="px-5 pt-4 pb-1 text-center text-base font-semibold min-[380px]:text-ml">
+          Happy with this photo?
         </h2>
-        {!file && (
-          <p className="mt-1 text-sm text-muted-foreground">{priceLine}</p>
-        )}
-      </div>
+      )}
       {error && (
         <p
           role="alert"
-          className="px-3 pb-2 text-center text-sm text-destructive"
+          className="px-5 pt-3 text-center text-sm text-destructive"
         >
           {error}
         </p>
       )}
-      <div className="space-y-1 p-1">
+      <div className="space-y-1 p-3">
         {file ? (
           <>
             <Button
@@ -82,7 +77,7 @@ export function StoreUpload({
                 </>
               ) : (
                 <>
-                  Create my poster
+                  Create my artwork
                   <ArrowRight aria-hidden />
                 </>
               )}
