@@ -134,6 +134,27 @@ export function isFramed(catalog: string | null | undefined) {
   return Boolean(catalog && /frame/i.test(catalog));
 }
 
+// The kinds of thing a store can turn a photo into, in the order the
+// storefront names them. Each label reads after "Turn your photo into a".
+export const PRODUCT_KINDS = [
+  { kind: "poster", label: "poster" },
+  { kind: "framed", label: "framed print" },
+  { kind: "canvas", label: "canvas" },
+  { kind: "tshirt", label: "t-shirt" },
+  { kind: "digital", label: "digital download" },
+] as const;
+export type ProductKind = (typeof PRODUCT_KINDS)[number]["kind"];
+
+// Products without a catalog predate catalogs and are all posters.
+export function productKind(catalog: string | null | undefined): ProductKind {
+  if (isFramed(catalog)) return "framed";
+  if (!catalog) return "poster";
+  if (/canvas/i.test(catalog)) return "canvas";
+  if (/shirt|apparel|tee/i.test(catalog)) return "tshirt";
+  if (/digital/i.test(catalog)) return "digital";
+  return "poster";
+}
+
 // How big a print feels, by area, so names say something the size line
 // doesn't: A4 and 8 × 10 in are small, 70 × 100 cm and 24 × 36 in extra large.
 export function sizeTier(widthMm: number, heightMm: number) {
