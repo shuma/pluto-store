@@ -20,9 +20,12 @@ beforeAll(async () => {
     const sql = await readFile(`supabase/migrations/${file}`, "utf8");
     await db.exec(sql.replace("create extension if not exists pgcrypto;", ""));
   }
-  await db.exec(await readFile("supabase/seed.sql", "utf8"));
+  // The store and print as they were before the cart: the seed follows the
+  // latest schema, so it can't be loaded this far back.
   await db.exec(
-    `insert into public.generation_sessions(id,creator_id,session_token,source_image_path,status) values('${session}','${creator}','hash','private/source','ready');
+    `insert into public.creators(id,name,slug,description,rights_confirmed_at,status,currency) values('${creator}','Demo','high-elf-club','Demo',now(),'live','sek');
+     insert into public.products(id,creator_id,name,slug,width_mm,height_mm,aspect_ratio,currency,price_amount) values('${product}','${creator}','A3 Poster','a3-poster',297,420,'portrait','sek',39900);
+     insert into public.generation_sessions(id,creator_id,session_token,source_image_path,status) values('${session}','${creator}','hash','private/source','ready');
      select public.claim_generation('${session}',2);
      insert into public.generated_artworks(id,generation_session_id,creator_id,round_id,storage_path,original_storage_path,provider,model,width_px,height_px) select '${artwork}','${session}','${creator}',id,'preview','original','test','test',2416,3424 from public.generation_rounds limit 1;
      insert into public.orders(id,creator_id,generation_session_id,generated_artwork_id,product_id,product_snapshot,print_storage_path,currency,amount_total) values('${order}','${creator}','${session}','${artwork}','${product}','{"name":"A3"}','print.png','sek',39900);`,
