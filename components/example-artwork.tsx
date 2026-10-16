@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ImagePlus,
   Loader2,
+  GripVertical,
   Trash2,
   X,
   ZoomIn,
@@ -185,6 +186,17 @@ export function ExampleArtwork({
               >
                 <X className="size-3.5" />
               </button>
+              {/* Says the card can be dragged; the drag starts from anywhere
+                  on it, this grip included. Shown like the remove button. */}
+              {visible.length > 1 && (
+                <span
+                  aria-hidden
+                  title="Drag to reorder"
+                  className="absolute left-1.5 top-1.5 grid size-6 cursor-grab place-items-center rounded-full bg-foreground/35 text-background opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:opacity-100 motion-small"
+                >
+                  <GripVertical className="size-3.5" />
+                </span>
+              )}
             </SortableExample>
           ))}
           {visible.length < MAX && (
