@@ -22,6 +22,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { move } from "@dnd-kit/helpers";
+import { PointerSensor } from "@dnd-kit/dom";
 import { BeforeAfterCard } from "./before-after-card";
 import { PreviewViewer, VIEWER_CONTROL } from "./preview-viewer";
 
@@ -30,7 +34,8 @@ const UNDO_MS = 6000;
 
 // Before/after pairs for the storefront, as a row of thumbnails inside the
 // store form: each opens full size in the same viewer as style previews, with
-// the photo one toggle away, and the last tile adds another.
+// the photo one toggle away, and the last tile adds another. Dragging a
+// thumbnail sets the order the storefront shows them in.
 export function ExampleArtwork({
   examples,
   onChange,
@@ -44,8 +49,36 @@ export function ExampleArtwork({
     // A fresh dialog, with nothing chosen, each time it opens.
     [session, setSession] = useState(0),
     [removing, setRemoving] = useState<string[]>([]),
-    [viewing, setViewing] = useState<string | null>(null);
-  const visible = examples.filter((e) => !removing.includes(e.id));
+    [viewing, setViewing] = useState<string | null>(null),
+    // The order just dragged into, shown at once while it saves; examples
+    // added since go after it.
+    [order, setOrder] = useState<string[] | null>(null);
+  const ids = examples.map((e) => e.id);
+  const ordered = order
+    ? [
+        ...order.filter((id) => ids.includes(id)),
+        ...ids.filter((id) => !order.includes(id)),
+      ]
+    : ids;
+  const byId = new Map(examples.map((e) => [e.id, e]));
+  const visible = ordered
+    .map((id) => byId.get(id)!)
+    .filter((e) => !removing.includes(e.id));
+  function reorder(next: string[]) {
+    if (next.join() === visible.map((e) => e.id).join()) return;
+    const previous = order;
+    // Examples waiting out their undo come back at the end.
+    setOrder([...next, ...removing]);
+    post("/api/creator/examples/order", { ids: next })
+      .then(() => {
+        router.refresh();
+        onChange();
+      })
+      .catch(() => {
+        setOrder(previous);
+        toast.error("Could not save the new order. Try again.");
+      });
+  }
   // Removals still waiting out their undo window go through if the page is
   // left, rather than being silently dropped.
   useEffect(() => {
@@ -96,7 +129,8 @@ export function ExampleArtwork({
       </div>
       <p className="mb-3 text-sm text-muted-foreground">
         A photo and the artwork made from it, so customers see what happens to
-        theirs. You can also publish a style preview from{" "}
+        theirs. Drag to change the order. You can also publish a style preview
+        from{" "}
         <Link
           href="/dashboard/store/reference-images"
           className="font-medium text-foreground underline-offset-4 hover:underline"
@@ -105,52 +139,69 @@ export function ExampleArtwork({
         </Link>
         .
       </p>
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
-        {visible.map((example, i) => (
-          <div key={example.id} className="group relative">
-            <button
-              type="button"
-              onClick={() => setViewing(example.id)}
-              aria-label={`View example ${i + 1} full size`}
-              className="group/view relative block w-full cursor-zoom-in rounded-xl outline-offset-2"
-            >
-              <BeforeAfterCard
-                artUrl={example.image_url}
-                sourceUrl={example.source_url}
-                alt={example.caption}
-                compact
-                className="aspect-[4/5] w-full rounded-xl"
-              />
-              <span className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition-opacity group-hover/view:opacity-100 group-focus-visible/view:opacity-100 motion-small">
-                <span className="grid size-8 scale-90 place-items-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-transform group-hover/view:scale-100 motion-small">
-                  <ZoomIn className="size-4" />
+      <DragDropProvider
+        sensors={(defaults) => [
+          ...defaults.filter((sensor) => sensor !== PointerSensor),
+          PointerSensor.configure({ preventActivation: startsOnRemove }),
+        ]}
+        onDragEnd={(event) => {
+          if (!event.canceled)
+            reorder(
+              move(
+                visible.map((e) => e.id),
+                event,
+              ),
+            );
+        }}
+      >
+        <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
+          {visible.map((example, i) => (
+            <SortableExample key={example.id} id={example.id} index={i}>
+              <button
+                type="button"
+                onClick={() => setViewing(example.id)}
+                aria-label={`View example ${i + 1} full size`}
+                className="group/view relative block w-full cursor-zoom-in rounded-xl outline-offset-2"
+              >
+                <BeforeAfterCard
+                  artUrl={example.image_url}
+                  sourceUrl={example.source_url}
+                  alt={example.caption}
+                  compact
+                  className="aspect-[4/5] w-full rounded-xl"
+                />
+                <span className="pointer-events-none absolute inset-0 grid place-items-center opacity-0 transition-opacity group-hover/view:opacity-100 group-focus-visible/view:opacity-100 motion-small">
+                  <span className="grid size-8 scale-90 place-items-center rounded-full bg-foreground/40 text-background backdrop-blur-sm transition-transform group-hover/view:scale-100 motion-small">
+                    <ZoomIn className="size-4" />
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={() => remove(example)}
+                aria-label={`Remove example ${i + 1}`}
+                data-no-drag
+                className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-foreground/35 text-background opacity-0 transition-opacity hover:bg-foreground/60 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100 motion-small"
+              >
+                <X className="size-3.5" />
+              </button>
+            </SortableExample>
+          ))}
+          {visible.length < MAX && (
             <button
               type="button"
-              onClick={() => remove(example)}
-              aria-label={`Remove example ${i + 1}`}
-              className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-foreground/35 text-background opacity-0 transition-opacity hover:bg-foreground/60 focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100 motion-small"
+              onClick={() => {
+                setSession((n) => n + 1);
+                setAdding(true);
+              }}
+              className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-5 bg-background text-xs font-medium text-muted-foreground transition-colors hover:border-neutral-6 hover:text-foreground"
             >
-              <X className="size-3.5" />
+              <ImagePlus className="size-5" />
+              Add
             </button>
-          </div>
-        ))}
-        {visible.length < MAX && (
-          <button
-            type="button"
-            onClick={() => {
-              setSession((n) => n + 1);
-              setAdding(true);
-            }}
-            className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-5 bg-background text-xs font-medium text-muted-foreground transition-colors hover:border-neutral-6 hover:text-foreground"
-          >
-            <ImagePlus className="size-5" />
-            Add
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      </DragDropProvider>
       <AddPair
         key={session}
         open={adding}
@@ -189,6 +240,38 @@ export function ExampleArtwork({
           );
         }}
       />
+    </div>
+  );
+}
+
+// A drag starts anywhere on a thumbnail, its full-size button included,
+// except the remove button. The default holds still for a moment (a long
+// press on touch) before dragging, so a tap still opens the example.
+const startsOnRemove = (event: PointerEvent) =>
+  event.target instanceof Element &&
+  Boolean(event.target.closest("[data-no-drag]"));
+
+// One thumbnail that can be dragged to a new place. It lifts while held,
+// and the others make room for it.
+function SortableExample({
+  id,
+  index,
+  children,
+}: {
+  id: string;
+  index: number;
+  children: React.ReactNode;
+}) {
+  const { ref, isDragging } = useSortable({ id, index });
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "group relative touch-manipulation rounded-xl transition-[scale,box-shadow] motion-small",
+        isDragging && "z-10 scale-105 cursor-grabbing shadow-lg",
+      )}
+    >
+      {children}
     </div>
   );
 }
