@@ -25,7 +25,7 @@ export default async function ResultsPage({
         slug={store.slug}
         name={store.name}
         avatarUrl={store.avatar_url}
-        step={session.status === "generating" ? 1 : 2}
+        step={session.status === "generating" ? 0 : 1}
       />
       <main id="main" className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:pt-8">
         <Hydrate queryKey={generationQuery(session.id).queryKey} data={result}>

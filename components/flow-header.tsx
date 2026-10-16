@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { ArrowLeft } from "lucide-react";
 
-const STEPS = ["Upload", "Create", "Choose", "Poster"];
+// Uploading the photo comes before the story the bar tells, so it isn't a
+// step: the bar starts once the artwork is being made.
+const STEPS = ["Create", "Choose", "Poster"];
 
 // A slim bar that stays put while the customer scrolls: back to the store,
 // whose store this is, and how far along they are, shown as a progress bar
@@ -19,7 +21,8 @@ export function FlowHeader({
   slug: string;
   name: string;
   avatarUrl?: string | null;
-  step: number;
+  // Leave out to hide the bar, as the upload page does.
+  step?: number;
   // Matches a page laid out at max-w-6xl, so the bar lines up with it.
   wide?: boolean;
 }) {
@@ -49,29 +52,31 @@ export function FlowHeader({
         {/* Balances the back button so the store name stays centred. */}
         <span className="w-10 shrink-0" aria-hidden />
       </div>
-      <ol
-        aria-label="Creation progress"
-        className={cn(
-          "mx-auto flex gap-1 px-4 pb-2",
-          wide ? "max-w-6xl" : "max-w-5xl",
-        )}
-      >
-        {STEPS.map((label, i) => (
-          <li
-            key={label}
-            aria-current={i === step ? "step" : undefined}
-            className={
-              "h-1 flex-1 rounded-full transition-colors " +
-              (i <= step ? "bg-foreground" : "bg-neutral-4")
-            }
-          >
-            <span className="sr-only">
-              {label}
-              {i < step ? ", done" : i === step ? ", current step" : ""}
-            </span>
-          </li>
-        ))}
-      </ol>
+      {step !== undefined && (
+        <ol
+          aria-label="Creation progress"
+          className={cn(
+            "mx-auto flex gap-1 px-4 pb-2",
+            wide ? "max-w-6xl" : "max-w-5xl",
+          )}
+        >
+          {STEPS.map((label, i) => (
+            <li
+              key={label}
+              aria-current={i === step ? "step" : undefined}
+              className={
+                "h-1 flex-1 rounded-full transition-colors " +
+                (i <= step ? "bg-foreground" : "bg-neutral-4")
+              }
+            >
+              <span className="sr-only">
+                {label}
+                {i < step ? ", done" : i === step ? ", current step" : ""}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
     </header>
   );
 }

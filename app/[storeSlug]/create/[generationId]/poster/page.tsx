@@ -39,7 +39,7 @@ export default async function PosterPage({
         slug={store.slug}
         name={store.name}
         avatarUrl={store.avatar_url}
-        step={3}
+        step={2}
         wide
       />
       <main id="main" className="mx-auto max-w-6xl px-4 pt-4 pb-12 sm:pt-12">

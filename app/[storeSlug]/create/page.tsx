@@ -16,7 +16,6 @@ export default async function CreatePage({
         slug={store.slug}
         name={store.name}
         avatarUrl={store.avatar_url}
-        step={0}
       />
       <main id="main" className="px-4 pt-6 pb-16 sm:pt-12">
         <UploadFlow slug={store.slug} />
