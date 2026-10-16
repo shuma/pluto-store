@@ -27,6 +27,7 @@ export default async function ResultsPage({
           slug={store.slug}
           name={store.name}
           avatarUrl={store.avatar_url}
+          back={`/${store.slug}/create`}
           progress={<GenerationProgress sessionId={session.id} />}
         />
         <main id="main" className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:pt-8">

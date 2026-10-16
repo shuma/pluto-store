@@ -39,6 +39,7 @@ export default async function PosterPage({
         slug={store.slug}
         name={store.name}
         avatarUrl={store.avatar_url}
+        back={`/${store.slug}/create/${session.id}`}
         step={2}
         wide
       />

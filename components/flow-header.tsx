@@ -16,6 +16,7 @@ export function FlowHeader({
   slug,
   name,
   avatarUrl,
+  back,
   step,
   progress,
   wide = false,
@@ -23,6 +24,8 @@ export function FlowHeader({
   slug: string;
   name: string;
   avatarUrl?: string | null;
+  // The page before this one; the store when left out.
+  back?: string;
   // Leave out to hide the bar, as the upload page does.
   step?: number;
   // A bar that moves on its own while the page is open, in place of step.
@@ -39,7 +42,10 @@ export function FlowHeader({
         )}
       >
         <Button asChild variant="ghost" size="icon" className="rounded-full">
-          <Link href={`/${slug}`} aria-label={`Back to ${name}`}>
+          <Link
+            href={back ?? `/${slug}`}
+            aria-label={back ? "Back" : `Back to ${name}`}
+          >
             <ArrowLeft className="size-5" aria-hidden />
           </Link>
         </Button>
