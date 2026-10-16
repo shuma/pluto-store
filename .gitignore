@@ -15,3 +15,7 @@ tmp/
 
 # Local Claude Code overrides
 .claude/settings.local.json
+
+# pnpm cache and macOS files
+.pnpm-store/
+.DS_Store
