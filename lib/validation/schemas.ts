@@ -1,3 +1,4 @@
+import { currencySchema } from "@/lib/currency";
 import { z } from "zod";
 import { storeSlugSchema } from "@/lib/store-slugs";
 export const uuid = z.uuid();
@@ -29,10 +30,12 @@ const price = z.coerce
   .min(1, "Set a price of at least 1.")
   .max(100_000)
   .transform((major) => Math.round(major * 100));
+// A price in each currency the store sells in, set by the creator; none is
+// converted from another.
 export const productDetailsSchema = z.object({
   name: z.string().trim().min(2, "Give it a name.").max(60),
   description: z.string().trim().max(200),
-  price,
+  prices: z.partialRecord(currencySchema, price),
 });
 export const productCreateSchema = productDetailsSchema.extend({
   catalog: z.string().min(1).max(100),

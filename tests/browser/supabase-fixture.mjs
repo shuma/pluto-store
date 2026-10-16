@@ -14,6 +14,7 @@ const store = {
   transformation_instruction: "Original botanical illustration",
   status: "live",
   currency: "sek",
+  currencies: ["sek", "eur"],
 };
 const products = [
   {
@@ -25,8 +26,10 @@ const products = [
     width_mm: 297,
     height_mm: 420,
     aspect_ratio: "iso-portrait",
-    currency: "sek",
-    price_amount: 39900,
+    product_prices: [
+      { currency: "sek", amount: 39900 },
+      { currency: "eur", amount: 3499 },
+    ],
     active: true,
   },
   {
@@ -38,8 +41,10 @@ const products = [
     width_mm: 420,
     height_mm: 594,
     aspect_ratio: "iso-portrait",
-    currency: "sek",
-    price_amount: 59900,
+    product_prices: [
+      { currency: "sek", amount: 59900 },
+      { currency: "eur", amount: 4999 },
+    ],
     active: true,
   },
 ];

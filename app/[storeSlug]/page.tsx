@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 import { ownedStore } from "@/lib/auth";
 import { HttpError } from "@/lib/http";
 import { PreviewReady } from "@/components/preview-ready";
+import { customerCurrency } from "@/lib/stores/customer-currency";
 export const dynamic = "force-dynamic";
 // `?preview` lets a signed-in creator see their own store before it is live,
 // which is what the dashboard's preview frame loads. Anyone else still only
@@ -44,17 +45,17 @@ export default async function Storefront({
     getExamples(store.id),
   ]);
   if (preview === undefined) track("store_viewed", { creator_id: store.id });
-  // What the store sells, as stickers in the headline, and its cheapest price.
-  const sold = new Set(products.map((p) =>
-      productKind(p.gelato_catalog, p.width_mm, p.height_mm),
-    ),);
-  const kinds = PRODUCT_KINDS.filter((k) => sold.has(k.kind));
-  const cheapest = products.reduce<(typeof products)[number] | undefined>(
-    (low, p) => (!low || p.price_amount < low.price_amount ? p : low),
-    undefined,
+  // What the store sells in the customer's currency, as stickers in the
+  // headline, and its cheapest price.
+  const { currency } = await customerCurrency(store, products);
+  const priced = products.filter((p) => p.prices[currency] !== undefined);
+  const sold = new Set(
+    priced.map((p) => productKind(p.gelato_catalog, p.width_mm, p.height_mm)),
   );
-  const from = cheapest
-    ? `From ${money(cheapest.price_amount, cheapest.currency)} · Delivered to your door`
+  const kinds = PRODUCT_KINDS.filter((k) => sold.has(k.kind));
+  const cheapest = Math.min(...priced.map((p) => p.prices[currency]!));
+  const from = priced.length
+    ? `From ${money(cheapest, currency)} · Delivered to your door`
     : "Delivered to your door";
   // One narrow column, centred, like a link-in-bio page: who made the style,
   // then the one thing to do. It is laid out for a phone first; wider
@@ -94,10 +95,15 @@ export default async function Storefront({
           </p>
         </header>
         <div className="mt-8 group-has-[[data-chosen]]/store:mt-4">
-          <StoreUpload slug={store.slug} examples={examples} priceLine={from} kinds={[...kinds]} />
+          <StoreUpload
+            slug={store.slug}
+            examples={examples}
+            priceLine={from}
+            kinds={[...kinds]}
+          />
           <p className="mt-3 px-4 text-center text-xs text-balance text-muted-foreground">
-            Your photo is only used to make your artwork, never for AI
-            training. By continuing you agree to the{" "}
+            Your photo is only used to make your artwork, never for AI training.
+            By continuing you agree to the{" "}
             <Link href="/terms" className="underline underline-offset-2">
               Terms
             </Link>{" "}

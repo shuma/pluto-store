@@ -5,7 +5,7 @@ import {
   gelatoConfigured,
   getCatalogProduct,
 } from "@/lib/fulfillment/gelato-catalog";
-import { uniqueSlug } from "@/lib/products/store-products";
+import { savePrices, uniqueSlug } from "@/lib/products/store-products";
 import { productCreateSchema } from "@/lib/validation/schemas";
 export async function POST(request: Request) {
   return api(async () => {
@@ -39,13 +39,18 @@ export async function POST(request: Request) {
         width_mm: product.widthMm,
         height_mm: product.heightMm,
         aspect_ratio: "portrait",
-        currency: store.currency,
-        price_amount: input.price,
         sort_order: count ?? 0,
       })
       .select("id")
       .single();
     check(error);
+    try {
+      await savePrices(store, data!.id, input.prices);
+    } catch (e) {
+      // Never leave a product with no price behind.
+      await db.from("products").delete().eq("id", data!.id);
+      throw e;
+    }
     return { id: data?.id };
   });
 }

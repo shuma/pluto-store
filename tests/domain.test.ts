@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { storeSlugSchema, RESERVED_SLUGS } from "@/lib/store-slugs";
 import { calculatePrice } from "@/lib/payments/pricing";
+import { visitorCurrency } from "@/lib/currency";
 import { canSubmit, canMarkFulfilled } from "@/lib/orders/state";
 import {
   checkoutDescription,
@@ -42,14 +43,14 @@ describe("prices and checkout", () => {
   });
   it("rejects invalid money", () =>
     expect(() =>
-      calculatePrice({ ...product, price_amount: 3.5 }, "sek"),
+      calculatePrice({ ...product, prices: { sek: 3.5 } }, "sek"),
     ).toThrow());
   it("constructs checkout only from the saved order snapshot", () => {
     const params = checkoutParams(
       order,
       "https://pluto.store",
       "high-elf-club",
-      "SE",
+      ["SE"],
     );
     expect(params.line_items?.[0].quantity).toBe(1);
     expect(params.line_items?.[0].price_data?.unit_amount).toBe(39900);
@@ -70,7 +71,7 @@ describe("prices and checkout", () => {
     );
   });
   it("lists every print in a cart with its quantity, adding up to the total", () => {
-    const large = { ...product, name: "A2 Poster", price_amount: 54900 };
+    const large = { ...product, name: "A2 Poster", prices: { sek: 54900 } };
     const cart = {
       ...order,
       amount_total: 2 * 39900 + 54900,
@@ -86,7 +87,7 @@ describe("prices and checkout", () => {
       ],
     };
     const lines =
-      checkoutParams(cart, "https://pluto.store", "high-elf-club", "SE", [
+      checkoutParams(cart, "https://pluto.store", "high-elf-club", ["SE"], [
         "https://img.test/a3.webp",
         null,
       ]).line_items ?? [];
@@ -221,5 +222,20 @@ describe("print preparation", () => {
     await expect(preparePrintFile(bytes, 420, 594, 144)).resolves.toMatchObject(
       { mimeType: "image/png" },
     );
+  });
+});
+describe("the currency a customer pays in", () => {
+  it("keeps the one they picked, if the store sells in it", () => {
+    expect(visitorCurrency(["sek", "eur"], "sek", "eur", "SE")).toBe("eur");
+    expect(visitorCurrency(["sek"], "sek", "eur", "DE")).toBe("sek");
+  });
+  it("otherwise follows their country, kronor before euros in Sweden", () => {
+    expect(visitorCurrency(["sek", "eur"], "sek", undefined, "DE")).toBe("eur");
+    expect(visitorCurrency(["sek", "eur"], "sek", undefined, "SE")).toBe("sek");
+    expect(visitorCurrency(["usd", "eur"], "usd", undefined, "SE")).toBe("eur");
+  });
+  it("falls back to the store's main currency", () => {
+    expect(visitorCurrency(["sek", "eur"], "sek", undefined, "US")).toBe("sek");
+    expect(visitorCurrency(["sek", "eur"], "sek", "gbp", null)).toBe("sek");
   });
 });

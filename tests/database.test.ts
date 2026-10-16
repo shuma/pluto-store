@@ -55,6 +55,31 @@ describe("real Postgres migration and claims", () => {
       ),
     ).rejects.toThrow("creator_reference_images_dimensions");
   });
+  it("prices a product once per currency and keeps a store's main currency among its own", async () => {
+    const prices = await db.query<{ currency: string; amount: number }>(
+      "select currency,amount from public.product_prices where product_id='22222222-2222-4222-8222-222222222222' order by currency",
+    );
+    expect(prices.rows).toEqual([
+      { currency: "eur", amount: 3499 },
+      { currency: "sek", amount: 39900 },
+    ]);
+    await expect(
+      db.query(
+        "insert into public.product_prices values('22222222-2222-4222-8222-222222222222','gbp',100)",
+      ),
+    ).rejects.toThrow();
+    // Payouts need a home country, which euros don't have.
+    await expect(
+      db.query(
+        `update public.creators set currency='eur' where id='${creator}'`,
+      ),
+    ).rejects.toThrow("creators_currency_check");
+    await expect(
+      db.query(
+        `update public.creators set currencies=array['eur'] where id='${creator}'`,
+      ),
+    ).rejects.toThrow("creators_currencies_check");
+  });
   it("keeps the style preview status within its states", async () => {
     const status = async () =>
       (

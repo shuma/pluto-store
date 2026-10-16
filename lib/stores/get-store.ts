@@ -6,6 +6,7 @@ import {
   productRow,
   exampleRow,
   MAX_EXAMPLES,
+  PRODUCT_WITH_PRICES,
   type Store,
 } from "@/lib/domain";
 import { storeSlugSchema } from "@/lib/store-slugs";
@@ -20,16 +21,16 @@ export const getStore = cache(async (slug: string) => {
   check(error);
   return data ? storeRow.parse(data) : null;
 });
-// What a store sells: its active products in its currency.
-export async function getProducts(store: Pick<Store, "id" | "currency">) {
+// What a store sells: its active products, with their price in each
+// currency. Which of them a customer sees depends on the currency they pay
+// in (lib/stores/customer-currency.ts).
+export async function getProducts(store: Pick<Store, "id">) {
   const { data, error } = await adminDb()
     .from("products")
-    .select("*")
+    .select(PRODUCT_WITH_PRICES)
     .eq("active", true)
-    .eq("currency", store.currency)
     .eq("creator_id", store.id)
-    .order("sort_order")
-    .order("price_amount");
+    .order("sort_order");
   check(error);
   return productRow.array().parse(data);
 }

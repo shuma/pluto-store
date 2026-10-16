@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { currencySchema, DEFAULT_CURRENCY } from "@/lib/currency";
+import {
+  currencySchema,
+  DEFAULT_CURRENCY,
+  type Currency,
+} from "@/lib/currency";
 // A storefront example: the photo that went in and the artwork that came out.
 export const exampleRow = z.object({
   id: z.uuid(),
@@ -20,7 +24,10 @@ export const storeRow = z.object({
   hero_url: z.string().nullable(),
   status: z.enum(["draft", "live", "disabled"]),
   // Defaults so the app still reads stores before 202609290002 is applied.
-  currency: currencySchema.default(DEFAULT_CURRENCY),
+  // The main currency: payouts are set up for it. Euros can't be one.
+  currency: z.enum(["usd", "sek"]).default(DEFAULT_CURRENCY),
+  // Every currency it sells in, the main one included (202610160001).
+  currencies: currencySchema.array().min(1).optional(),
   // Defaults so stores read before 202610010001 still parse.
   stripe_account_id: z.string().nullable().default(null),
   payouts_status: z
@@ -29,25 +36,61 @@ export const storeRow = z.object({
   deleted_at: z.string().nullable().default(null),
 });
 export type Store = z.infer<typeof storeRow>;
-export const productRow = z.object({
-  id: z.uuid(),
-  creator_id: z.uuid().nullable(),
-  name: z.string(),
-  slug: z.string(),
-  gelato_product_uid: z.string().nullable(),
-  width_mm: z.coerce.number(),
-  height_mm: z.coerce.number(),
-  // "iso-portrait" on products from before creators built their catalogs.
-  aspect_ratio: z.string(),
-  currency: z.string(),
-  price_amount: z.number().int(),
-  active: z.boolean(),
-  // Defaults so order snapshots taken before these columns still parse.
-  description: z.string().default(""),
-  gelato_catalog: z.string().nullable().default(null),
-  gelato_attributes: z.record(z.string(), z.string()).default({}),
-  sort_order: z.number().int().default(0),
-});
+// The currencies a store sells in, for stores read before they could have
+// more than one.
+export const storeCurrencies = (
+  store: Pick<Store, "currency" | "currencies">,
+): Currency[] => store.currencies ?? [store.currency];
+// What a product query selects: the product and its price in each currency.
+export const PRODUCT_WITH_PRICES = "*, product_prices(currency,amount)";
+// A product's prices by currency, from the rows the query joins in. Order
+// snapshots taken before 202610160001 hold one price and its currency.
+function withPrices(raw: unknown) {
+  if (!raw || typeof raw !== "object") return raw;
+  const { product_prices, currency, price_amount, prices, ...rest } =
+    raw as Record<string, unknown>;
+  if (prices) return { ...rest, prices };
+  if (Array.isArray(product_prices))
+    return {
+      ...rest,
+      prices: Object.fromEntries(
+        product_prices.map((p: { currency: string; amount: number }) => [
+          p.currency,
+          p.amount,
+        ]),
+      ),
+    };
+  return {
+    ...rest,
+    prices:
+      typeof currency === "string" && typeof price_amount === "number"
+        ? { [currency]: price_amount }
+        : {},
+  };
+}
+export const productRow = z.preprocess(
+  withPrices,
+  z.object({
+    id: z.uuid(),
+    creator_id: z.uuid().nullable(),
+    name: z.string(),
+    slug: z.string(),
+    gelato_product_uid: z.string().nullable(),
+    width_mm: z.coerce.number(),
+    height_mm: z.coerce.number(),
+    // "iso-portrait" on products from before creators built their catalogs.
+    aspect_ratio: z.string(),
+    // Minor units in each currency it is sold in. None is converted from
+    // another; a currency without one isn't sold.
+    prices: z.partialRecord(currencySchema, z.number().int()),
+    active: z.boolean(),
+    // Defaults so order snapshots taken before these columns still parse.
+    description: z.string().default(""),
+    gelato_catalog: z.string().nullable().default(null),
+    gelato_attributes: z.record(z.string(), z.string()).default({}),
+    sort_order: z.number().int().default(0),
+  }),
+);
 export type Product = z.infer<typeof productRow>;
 export const sessionRow = z.object({
   id: z.uuid(),

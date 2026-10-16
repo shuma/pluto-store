@@ -12,8 +12,7 @@ const product = (fields: Record<string, unknown>) =>
     width_mm: 500,
     height_mm: 700,
     aspect_ratio: "portrait",
-    currency: "usd",
-    price_amount: 3499,
+    prices: { usd: 3499 },
     active: true,
     ...fields,
   });
@@ -28,6 +27,7 @@ describe("productDetails", () => {
         gelato_product_uid:
           "flat_500x700-mm-20x28-inch_200-gsm-80lb-uncoated_4-0_ver",
       }),
+      "usd",
     );
     expect(text(d)).toContain("200 gsm");
     expect(text(d)).not.toContain("250 gsm");
@@ -40,6 +40,7 @@ describe("productDetails", () => {
         gelato_catalog: "posters",
         gelato_attributes: { Paper: "Archival paper" },
       }),
+      "usd",
     );
     expect(text(d)).toContain("250 gsm");
     expect(d.summary).toBe("250 gsm archival paper · acid-free");
@@ -54,6 +55,7 @@ describe("productDetails", () => {
           "Frame colour": "Black frame",
         },
       }),
+      "usd",
     );
     expect(d.features).toContain("Black frame");
     expect(text(d)).toContain("plexiglass");
@@ -61,15 +63,21 @@ describe("productDetails", () => {
   });
 
   it("claims no paper for a product it can't place", () => {
-    const d = productDetails(product({}));
+    const d = productDetails(product({}), "usd");
     expect(text(d)).not.toMatch(/gsm/);
     expect(d.summary).toBeNull();
   });
 
-  it("shows EU safety information only where the store sells in the EU", () => {
-    expect(
-      productDetails(product({ currency: "sek" })).safety[0].value,
-    ).toContain("Gelato Estonia");
-    expect(productDetails(product({ currency: "usd" })).safety).toEqual([]);
+  it("shows EU safety information only to customers paying for EU delivery", () => {
+    expect(productDetails(product({}), "sek").safety[0].value).toContain(
+      "Gelato Estonia",
+    );
+    expect(productDetails(product({}), "eur").safety).not.toEqual([]);
+    expect(productDetails(product({}), "usd").safety).toEqual([]);
+  });
+
+  it("says where shipping goes for the currency paid in", () => {
+    expect(productDetails(product({}), "eur").delivery).toContain("the EU");
+    expect(productDetails(product({}), "sek").delivery).toContain("Sweden");
   });
 });

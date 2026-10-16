@@ -39,9 +39,14 @@ describe("cart rules", () => {
   });
   it("names the same cart the same way, whatever order it was filled in", () => {
     const a = [line("a3", 2), line("a2", 1)];
-    expect(cartKey(a)).toBe(cartKey([...a].reverse()));
-    // A different quantity or price is a different cart.
-    expect(cartKey(a)).not.toBe(cartKey([line("a3", 3), line("a2", 1)]));
-    expect(cartKey(a)).not.toBe(cartKey([line("a3", 2, 3999), line("a2", 1)]));
+    expect(cartKey(a, "sek")).toBe(cartKey([...a].reverse(), "sek"));
+    // A different quantity, price or currency is a different cart.
+    expect(cartKey(a, "sek")).not.toBe(
+      cartKey([line("a3", 3), line("a2", 1)], "sek"),
+    );
+    expect(cartKey(a, "sek")).not.toBe(
+      cartKey([line("a3", 2, 3999), line("a2", 1)], "sek"),
+    );
+    expect(cartKey(a, "sek")).not.toBe(cartKey(a, "eur"));
   });
 });

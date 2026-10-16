@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripeClient } from "@/lib/payments/stripe";
 import { adminDb, check } from "@/lib/supabase/admin";
 import { config } from "@/lib/config";
-import { MARKETS, type Currency } from "@/lib/currency";
+import { PAYOUT_COUNTRY } from "@/lib/currency";
 import type { Store } from "@/lib/domain";
 import { payoutsStatus } from "./rules";
 
@@ -19,7 +19,7 @@ export async function ensureConnectedAccount(store: Store, email: string) {
   if (store.stripe_account_id) return store.stripe_account_id;
   const account = await stripeClient().accounts.create(
     {
-      country: MARKETS[store.currency as Currency].country,
+      country: PAYOUT_COUNTRY[store.currency],
       email,
       controller: {
         fees: { payer: "application" },

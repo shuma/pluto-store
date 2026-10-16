@@ -1,5 +1,6 @@
 import { HandHeart, Leaf, Truck } from "lucide-react";
 import type { Product } from "@/lib/domain";
+import type { Currency } from "@/lib/currency";
 import { productDetails } from "@/lib/products/details";
 import {
   Accordion,
@@ -13,9 +14,17 @@ import {
 // collapsed so the size choice stays the focus. For EU buyers the safety
 // information stays visible beneath: GPSR asks for it to be shown clearly on
 // the listing.
-export function ProductDetails({ product }: { product: Product }) {
-  const { features, certifiedPaper, delivery, care, safety } =
-    productDetails(product);
+export function ProductDetails({
+  product,
+  currency,
+}: {
+  product: Product;
+  currency: Currency;
+}) {
+  const { features, certifiedPaper, delivery, care, safety } = productDetails(
+    product,
+    currency,
+  );
   const rows = [
     { value: "shipping", icon: Truck, title: "Free shipping", body: delivery },
     ...(features.length

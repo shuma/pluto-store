@@ -14,19 +14,14 @@ import {
   CURRENCIES,
   CURRENCY_LABELS,
   CURRENCY_PLURALS,
+  isMainCurrency,
   type Currency,
 } from "@/lib/currency";
 import { Panel, PANEL_INSET } from "./panel";
 import { Button } from "./ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "./ui/dialog";
 import { ProductDialog, type ProductDraft } from "./product-dialog";
 import { PrintMock } from "./print-mock";
-import { Segmented } from "./segmented";
+import { Toggles } from "./segmented";
 
 // The store's catalog: what customers can choose from on the poster step,
 // with what each one earns, and the way in to add more from Gelato.
@@ -34,28 +29,53 @@ export function ProductsManager({
   products,
   costs,
   currency,
+  currencies,
   art,
 }: {
   products: Product[];
   // The creator's style previews, shown on every print.
   art: Artwork;
-  // What each product costs to make and deliver, by id, where Gelato could
-  // quote it.
-  costs: Record<string, UnitCost>;
-  // The store's currency: products priced in it are for sale.
+  // What each product costs to make and deliver, by id and currency, where
+  // Gelato could quote it.
+  costs: Record<string, Partial<Record<Currency, UnitCost>>>;
+  // The store's main currency, and every currency it sells in. A product is
+  // sold in each it has a price in.
   currency: Currency;
+  currencies: Currency[];
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<ProductDraft | null>(null),
     [busy, setBusy] = useState<string | null>(null);
-  const [switching, setSwitching] = useState<Currency | null>(null),
-    [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const active = products.filter((p) => p.active),
     archived = products.filter((p) => !p.active);
-  // Active products split by currency: the ones for sale, and the ones
-  // waiting for a price since the store switched.
-  const selling = active.filter((p) => p.currency === currency),
-    waiting = active.filter((p) => p.currency !== currency);
+  // The products for sale in at least one of the store's currencies, and
+  // any priced in none of them. A product can be left out of a currency on
+  // purpose; a currency with nothing in it at all can't be paid in.
+  const priced = (p: Product) =>
+    currencies.some((c) => p.prices[c] !== undefined);
+  const selling = active.filter(priced),
+    waiting = active.filter((p) => !priced(p)),
+    empty = currencies.filter(
+      (c) => !selling.some((p) => p.prices[c] !== undefined),
+    );
+  async function setCurrencies(next: Currency[]) {
+    const added = next.find((c) => !currencies.includes(c)),
+      dropped = currencies.find((c) => !next.includes(c));
+    try {
+      await post("/api/creator/store/currency", { currencies: next });
+      toast(
+        added
+          ? `Your store now also sells in ${CURRENCY_PLURALS[added]}`
+          : `Your store no longer sells in ${CURRENCY_PLURALS[dropped!]}`,
+      );
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update.");
+    }
+  }
+  // The last of the currencies payouts can be set up in has to stay.
+  const mainLeft = currencies.filter(isMainCurrency);
   async function setActive(product: Product, on: boolean) {
     setBusy(product.id);
     try {
@@ -86,9 +106,7 @@ export function ProductsManager({
                 : `${selling.length} products`}{" "}
               for sale
             </p>
-            <Button
-              onClick={() => setDraft({ kind: "new" })}
-            >
+            <Button onClick={() => setDraft({ kind: "new" })}>
               <Plus data-icon="inline-start" />
               Add product
             </Button>
@@ -102,33 +120,52 @@ export function ProductsManager({
               {Math.round(PLATFORM_FEE_RATE * 100)}% Pluto fee.
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Currency</span>
-              <Segmented
-                label="Store currency"
-                size="sm"
+              <span className="text-xs text-muted-foreground">Sell in</span>
+              <Toggles
+                label="Store currencies"
                 options={CURRENCIES.map((c) => ({
                   value: c,
                   label: c.toUpperCase(),
-                  title: CURRENCY_LABELS[c],
+                  locked:
+                    currencies.length === 1 ||
+                    (isMainCurrency(c) && mainLeft.length === 1),
+                  title:
+                    isMainCurrency(c) && mainLeft.length === 1
+                      ? `${CURRENCY_LABELS[c]}: your payouts are set up in it`
+                      : CURRENCY_LABELS[c],
                 }))}
-                value={currency}
-                onChange={setSwitching}
+                value={currencies}
+                onChange={setCurrencies}
               />
             </div>
           </div>
         }
       >
         <div className={PANEL_INSET}>
+          {selling.length > 0 && empty.length > 0 && (
+            <div className="shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)] bg-warning-transparent px-6 py-4">
+              <p className="text-sm font-medium">
+                Nothing is priced in{" "}
+                {listJoin(empty.map((c) => CURRENCY_PLURALS[c]))} yet
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Customers can’t pay in {empty.length === 1 ? "it" : "them"}{" "}
+                until a product has a price. Edit a product to add one, or stop
+                selling in {empty.length === 1 ? "it" : "them"} below.
+              </p>
+            </div>
+          )}
           {waiting.length > 0 && (
             <div className="shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)] bg-warning-transparent px-6 py-4">
               <p className="text-sm font-medium">
                 {waiting.length === 1
-                  ? "1 product needs"
-                  : `${waiting.length} products need`}{" "}
-                a price in {CURRENCY_PLURALS[currency]}
+                  ? "1 product isn’t"
+                  : `${waiting.length} products aren’t`}{" "}
+                for sale
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                They aren’t for sale until they have one.
+                {waiting.length === 1 ? "It has" : "They have"} no price in any
+                of your store’s currencies.
               </p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {waiting.map((p) => (
@@ -139,9 +176,6 @@ export function ProductsManager({
                       onClick={() => setDraft({ kind: "edit", product: p })}
                     >
                       {p.name}
-                      <span className="text-muted-foreground line-through">
-                        {money(p.price_amount, p.currency)}
-                      </span>
                     </Button>
                   </li>
                 ))}
@@ -154,8 +188,9 @@ export function ProductsManager({
                 <Row
                   key={p.id}
                   product={p}
+                  currencies={currencies}
                   art={artFor(art, i)}
-                  cost={costs[p.id]}
+                  costs={costs[p.id] ?? {}}
                   busy={busy === p.id}
                   onEdit={() =>
                     setDraft({ kind: "edit", product: p, artIndex: i })
@@ -189,7 +224,9 @@ export function ProductsManager({
       </Panel>
       {archived.length > 0 && (
         <div className="mt-4">
-          <Button variant="ghost" size="sm"
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
             aria-expanded={showArchived}
             onClick={() => setShowArchived((open) => !open)}
@@ -204,7 +241,12 @@ export function ProductsManager({
             Archived ({archived.length})
           </Button>
           {showArchived && (
-            <ul className={cn(PANEL_INSET, "mt-2 *:not-last:shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)]")}>
+            <ul
+              className={cn(
+                PANEL_INSET,
+                "mt-2 *:not-last:shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)]",
+              )}
+            >
               {archived.map((p) => (
                 <li
                   key={p.id}
@@ -230,28 +272,21 @@ export function ProductsManager({
           )}
         </div>
       )}
-      <CurrencyDialog
-        from={currency}
-        to={switching}
-        selling={selling.length}
-        restored={active.filter((p) => p.currency === switching).length}
-        onClose={() => setSwitching(null)}
-        onConfirm={async () => {
-          await post("/api/creator/store/currency", { currency: switching });
-          toast(`Your store now sells in ${CURRENCY_PLURALS[switching!]}`);
-          setSwitching(null);
-          router.refresh();
-        }}
-      />
       <ProductDialog
         draft={draft}
         currency={currency}
+        currencies={currencies}
         art={art}
         onOpenChange={(open) => !open && setDraft(null)}
         onSave={async (details, picked) => {
-          // The form hands back minor units; the API takes the price as typed
-          // and converts it itself, so both routes share one schema.
-          const body = { ...details, price: details.price / 100 };
+          // The form hands back minor units; the API takes prices as typed
+          // and converts them itself, so both routes share one schema.
+          const body = {
+            ...details,
+            prices: Object.fromEntries(
+              Object.entries(details.prices).map(([c, v]) => [c, v / 100]),
+            ),
+          };
           if (draft?.kind === "edit")
             await send(
               "PATCH",
@@ -277,24 +312,21 @@ export function ProductsManager({
 
 function Row({
   product,
-  cost,
+  currencies,
+  costs,
   art,
   busy,
   onEdit,
   onArchive,
 }: {
   product: Product;
-  cost?: UnitCost;
+  currencies: Currency[];
+  costs: Partial<Record<Currency, UnitCost>>;
   art: ReturnType<typeof artFor>;
   busy: boolean;
   onEdit: () => void;
   onArchive: () => void;
 }) {
-  const currency = product.currency as Currency;
-  const split =
-    cost === undefined
-      ? null
-      : payout(product.price_amount, cost.total, currency);
   const details = [
     sizeBesideName(product.name, product.width_mm, product.height_mm),
     ...Object.values(product.gelato_attributes),
@@ -319,26 +351,42 @@ function Row({
           <p className="text-xs text-warning">Fulfilled manually for now</p>
         )}
       </div>
-      <div className="text-right tabular-nums">
-        <p className="font-medium">{money(product.price_amount, currency)}</p>
-        {cost && split && (
-          <p
-            className="text-sm"
-            title={`After ${money(cost.total, currency)} print & delivery and ${money(split.platform + split.payment, currency)} fees`}
-          >
-            <span
-              className={cn(
-                "font-medium",
-                split.earnings > 0
-                  ? "text-success"
-                  : "text-destructive",
+      {/* One line per currency: the price, and what it earns once known. */}
+      <dl className="space-y-1 text-right text-sm tabular-nums">
+        {currencies.map((c) => {
+          const price = product.prices[c],
+            cost = costs[c];
+          const split =
+            price === undefined || !cost ? null : payout(price, cost.total, c);
+          return (
+            <div key={c} className="flex justify-end gap-3">
+              <dt className="sr-only">{CURRENCY_LABELS[c]}</dt>
+              {price === undefined ? (
+                <dd className="text-muted-foreground">
+                  Not sold in {c.toUpperCase()}
+                </dd>
+              ) : (
+                <dd className="flex gap-3">
+                  <span className="font-medium">{money(price, c)}</span>
+                  {cost && split && (
+                    <span
+                      title={`After ${money(cost.total, c)} print & delivery and ${money(split.platform + split.payment, c)} fees`}
+                      className={cn(
+                        "font-medium",
+                        split.earnings > 0
+                          ? "text-success"
+                          : "text-destructive",
+                      )}
+                    >
+                      Earn {money(split.earnings, c)}
+                    </span>
+                  )}
+                </dd>
               )}
-            >
-              Earn {money(split.earnings, currency)}
-            </span>
-          </p>
-        )}
-      </div>
+            </div>
+          );
+        })}
+      </dl>
       <div className="flex gap-1">
         <Button
           variant="ghost"
@@ -364,89 +412,9 @@ function Row({
   );
 }
 
-// Switching currency never converts prices, so say plainly what happens to
-// the products on sale before it does.
-function CurrencyDialog({
-  from,
-  to,
-  selling,
-  restored,
-  onClose,
-  onConfirm,
-}: {
-  from: Currency;
-  to: Currency | null;
-  selling: number;
-  restored: number;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  const toName = to ? CURRENCY_PLURALS[to] : "";
-  const fromName = CURRENCY_PLURALS[from];
-  return (
-    <Dialog open={Boolean(to)} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md">
-        <div className="px-6 pt-6 pb-6">
-          <DialogTitle className="text-lg font-semibold">
-            Sell in {toName}?
-          </DialogTitle>
-          <DialogDescription asChild>
-            <div className="mt-2 space-y-3 text-sm text-muted-foreground">
-              <p>
-                Customers will pay in {toName}, and printing costs and your
-                earnings are shown in {toName} too.
-              </p>
-              {selling > 0 && (
-                <p>
-                  {selling === 1
-                    ? "Your 1 product priced"
-                    : `Your ${selling} products priced`}{" "}
-                  in {fromName} will stop selling until you give{" "}
-                  {selling === 1 ? "it a price" : "them prices"} in {toName}.
-                  Prices aren’t converted, and switching back brings them back
-                  as they were.
-                </p>
-              )}
-              {restored > 0 && (
-                <p>
-                  {restored === 1
-                    ? "1 product already priced"
-                    : `${restored} products already priced`}{" "}
-                  in {toName} will go back on sale.
-                </p>
-              )}
-            </div>
-          </DialogDescription>
-        </div>
-        <div className="flex justify-end gap-2 shadow-[inset_0_var(--border-s)_0_var(--border)] bg-neutral-2 px-6 py-4">
-          <Button
-            variant="ghost"
-            className="h-11 rounded-xl px-4"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="h-11 rounded-xl px-6"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await onConfirm();
-              } catch (e) {
-                toast.error(
-                  e instanceof Error ? e.message : "Could not switch.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? "Switching…" : `Switch to ${to?.toUpperCase()}`}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+// "euros", "kronor and euros", "dollars, kronor and euros".
+function listJoin(items: string[]) {
+  return items.length < 2
+    ? (items[0] ?? "")
+    : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }

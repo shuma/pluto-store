@@ -4,6 +4,7 @@ import type {
   CatalogProduct,
   UnitCost,
 } from "@/lib/products/catalog";
+import type { Currency } from "@/lib/currency";
 
 async function read<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -54,12 +55,12 @@ export function catalogProductsQuery(
   });
 }
 
-export function unitCostQuery(productUid: string | null) {
+export function unitCostQuery(productUid: string | null, currency: Currency) {
   return queryOptions({
-    queryKey: ["unit-cost", productUid] as const,
+    queryKey: ["unit-cost", productUid, currency] as const,
     queryFn: () =>
       read<{ cost: UnitCost }>(
-        `/api/creator/catalog/price?uid=${encodeURIComponent(productUid ?? "")}`,
+        `/api/creator/catalog/price?${new URLSearchParams({ uid: productUid ?? "", currency })}`,
       ).then((r) => r.cost),
     staleTime: STALE,
     enabled: Boolean(productUid),

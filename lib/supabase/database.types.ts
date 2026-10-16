@@ -357,6 +357,7 @@ export type Database = {
           avatar_url: string | null;
           created_at: string;
           currency: string;
+          currencies: string[];
           deleted_at: string | null;
           description: string;
           hero_url: string | null;
@@ -380,6 +381,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           currency?: string;
+          currencies?: string[];
           deleted_at?: string | null;
           description?: string;
           hero_url?: string | null;
@@ -403,6 +405,7 @@ export type Database = {
           avatar_url?: string | null;
           created_at?: string;
           currency?: string;
+          currencies?: string[];
           deleted_at?: string | null;
           description?: string;
           hero_url?: string | null;
@@ -801,13 +804,38 @@ export type Database = {
           },
         ];
       };
+      product_prices: {
+        Row: {
+          amount: number;
+          currency: string;
+          product_id: string;
+        };
+        Insert: {
+          amount: number;
+          currency: string;
+          product_id: string;
+        };
+        Update: {
+          amount?: number;
+          currency?: string;
+          product_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_prices_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       products: {
         Row: {
           active: boolean;
           aspect_ratio: string;
           created_at: string;
           creator_id: string | null;
-          currency: string;
           description: string;
           gelato_attributes: Json;
           gelato_catalog: string | null;
@@ -815,7 +843,6 @@ export type Database = {
           height_mm: number;
           id: string;
           name: string;
-          price_amount: number;
           slug: string;
           sort_order: number;
           updated_at: string;
@@ -826,7 +853,6 @@ export type Database = {
           aspect_ratio?: string;
           created_at?: string;
           creator_id?: string | null;
-          currency: string;
           description?: string;
           gelato_attributes?: Json;
           gelato_catalog?: string | null;
@@ -834,7 +860,6 @@ export type Database = {
           height_mm: number;
           id?: string;
           name: string;
-          price_amount: number;
           slug: string;
           sort_order?: number;
           updated_at?: string;
@@ -845,7 +870,6 @@ export type Database = {
           aspect_ratio?: string;
           created_at?: string;
           creator_id?: string | null;
-          currency?: string;
           description?: string;
           gelato_attributes?: Json;
           gelato_catalog?: string | null;
@@ -853,7 +877,6 @@ export type Database = {
           height_mm?: number;
           id?: string;
           name?: string;
-          price_amount?: number;
           slug?: string;
           sort_order?: number;
           updated_at?: string;

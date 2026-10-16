@@ -2,7 +2,14 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { adminDb, check } from "@/lib/supabase/admin";
-import { productRow, type Product } from "@/lib/domain";
+import {
+  PRODUCT_WITH_PRICES,
+  productRow,
+  storeRow,
+  type Product,
+} from "@/lib/domain";
+import type { Currency } from "@/lib/currency";
+import { customerCurrency } from "@/lib/stores/customer-currency";
 import { HttpError } from "@/lib/http";
 import { requireSession } from "@/lib/generations/session";
 import { cachedSignedUrl } from "@/lib/storage";
@@ -16,7 +23,8 @@ import { allowedQuantity, cartCount, type CartLine } from "./rules";
 // A visit's cart, held by the server so checkout never trusts the browser
 // for what is bought or what it costs. A cart is one artwork from this visit,
 // in any of the store's products and quantities, priced as each product is
-// now. Choosing a print of another artwork starts the cart over.
+// now in the currency the customer pays in. Choosing a print of another
+// artwork starts the cart over; choosing another currency reprices it.
 
 // What the page shows for one item.
 export type CartItem = {
@@ -44,14 +52,30 @@ const row = z.object({
     .nullable(),
 });
 
+// The currency the customer pays this store in, chosen as the store's pages
+// choose it.
 async function storeCurrency(creatorId: string) {
-  const { data, error } = await adminDb()
-    .from("creators")
-    .select("currency")
-    .eq("id", creatorId)
-    .single();
-  check(error);
-  return z.object({ currency: z.string() }).parse(data).currency;
+  const db = adminDb();
+  const [store, products] = await Promise.all([
+    db
+      .from("creators")
+      .select("currency,currencies")
+      .eq("id", creatorId)
+      .single(),
+    db
+      .from("products")
+      .select(PRODUCT_WITH_PRICES)
+      .eq("creator_id", creatorId)
+      .eq("active", true),
+  ]);
+  check(store.error);
+  check(products.error);
+  return (
+    await customerCurrency(
+      storeRow.pick({ currency: true, currencies: true }).parse(store.data),
+      productRow.array().parse(products.data),
+    )
+  ).currency;
 }
 
 // The visit's items that can still be bought, oldest first, with what checkout
@@ -67,7 +91,7 @@ export async function cartLines(
     db
       .from("cart_items")
       .select(
-        "id,generated_artwork_id,product_id,quantity,created_at,products(*),generated_artworks(storage_path,original_storage_path,status)",
+        "id,generated_artwork_id,product_id,quantity,created_at,products(*,product_prices(currency,amount)),generated_artworks(storage_path,original_storage_path,status)",
       )
       .eq("generation_session_id", sessionId)
       .eq("generated_artwork_id", artworkId)
@@ -80,15 +104,21 @@ export async function cartLines(
   for (const item of row.array().parse(data)) {
     const product = item.products,
       artwork = item.generated_artworks;
-    let unitAmount: number | null = null;
-    try {
-      if (product && product.creator_id === creatorId)
-        unitAmount = calculatePrice(product, currency).amount;
-    } catch {
-      // Withdrawn or repriced into another currency: no longer for sale.
-    }
-    if (!product || unitAmount === null || artwork?.status !== "ready") {
+    // Withdrawn, or the artwork gone: no longer for sale.
+    if (
+      !product?.active ||
+      product.creator_id !== creatorId ||
+      artwork?.status !== "ready"
+    ) {
       stale.push(item.id);
+      continue;
+    }
+    let unitAmount: number;
+    try {
+      unitAmount = calculatePrice(product, currency).amount;
+    } catch {
+      // Not priced in this currency: left in the cart, so switching back
+      // brings it back, but not shown or sold in this one.
       continue;
     }
     lines.push({
@@ -129,11 +159,14 @@ export async function getCart(
 
 // Names a cart's exact contents and prices, whatever order they were added
 // in: checking out the same cart again finds the order already made for it.
-export function cartKey(lines: CartLine[]) {
+// The currency is part of it, so 34.99 in euros is never 34.99 in dollars.
+export function cartKey(lines: CartLine[], currency: Currency) {
   const entries = lines
     .map((l) => `${l.artworkId}:${l.productId}:${l.quantity}:${l.unitAmount}`)
     .sort();
-  return createHash("sha256").update(entries.join("|")).digest("hex");
+  return createHash("sha256")
+    .update([currency, ...entries].join("|"))
+    .digest("hex");
 }
 
 function limit(quantity: number, others: number) {
@@ -162,7 +195,7 @@ export async function addToCart(input: unknown) {
       .maybeSingle(),
     db
       .from("products")
-      .select("*")
+      .select(PRODUCT_WITH_PRICES)
       .eq("id", productId)
       .eq("creator_id", session.creator_id)
       .eq("active", true)

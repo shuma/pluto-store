@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({
   expire: vi.fn(),
   session: vi.fn(),
   queries: [] as string[],
+  // The currency the customer picked, as their cookie holds it.
+  picked: undefined as string | undefined,
+}));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: () => (mocks.picked ? { value: mocks.picked } : undefined),
+  }),
+  headers: async () => ({ get: () => null }),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   check: (e: unknown) => {
@@ -54,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.results.length = 0;
   mocks.queries.length = 0;
+  mocks.picked = undefined;
   vi.stubEnv("FULFILLMENT_MODE", "manual");
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://pluto.store");
   mocks.session.mockResolvedValue({
@@ -79,19 +88,30 @@ const line = (quantity = 1, product = a3) => ({
     status: "ready",
   },
 });
-// The queries checkout makes, answered in order: the store, the store's
-// currency and the cart, the order already made for that cart, the visit's other
-// open checkouts, the artworks for mockups, and saving the Stripe session.
+// The store's currencies and what it has priced in them, as the currency
+// lookup reads them; it runs before the cart query is read.
+const store = (currency = "sek", currencies = [currency], products = [a3]) => [
+  { data: { currency, currencies }, error: null },
+  { data: products, error: null },
+];
+// The queries checkout makes, answered in order: the store, its currencies
+// and the cart, the order already made for that cart, the visit's other open
+// checkouts, the artworks for mockups, and saving the Stripe session.
 function queue({
   savedOrder = order,
-  lines = [line()],
-  currency = "sek",
+  lines = [line()] as ReturnType<typeof line>[],
+  currency = "sek" as string,
+  currencies = undefined as string[] | undefined,
+  products = undefined as unknown[] | undefined,
   others = [] as { id: string; stripe_checkout_session_id: string }[],
 } = {}) {
   mocks.results.push(
-    { data: { slug: "high-elf-club", currency }, error: null },
-    // The currency lookup runs before the cart query is read.
-    { data: { currency }, error: null },
+    { data: { slug: "high-elf-club" }, error: null },
+    ...store(
+      currency,
+      currencies ?? [currency],
+      (products ?? lines.map((l) => l.products)) as (typeof a3)[],
+    ),
     { data: lines, error: null },
     { data: savedOrder, error: null },
     { data: others, error: null },
@@ -145,8 +165,8 @@ it("returns the confirmation for an already paid cart without another charge", a
 });
 it("drops a product owned by another creator from the cart, never selling it", async () => {
   mocks.results.push(
-    { data: { slug: "high-elf-club", currency: "sek" }, error: null },
-    { data: { currency: "sek" }, error: null },
+    { data: { slug: "high-elf-club" }, error: null },
+    ...store(),
     {
       data: [
         line(1, { ...a3, creator_id: "88888888-8888-4888-8888-888888888888" }),
@@ -159,7 +179,11 @@ it("drops a product owned by another creator from the cart, never selling it", a
   expect(mocks.create).not.toHaveBeenCalled();
 });
 it("ships a dollar store's orders within the US", async () => {
-  queue({ currency: "usd", lines: [line(1, { ...a3, currency: "usd" })] });
+  queue({
+    currency: "usd",
+    lines: [line(1, { ...a3, prices: { usd: 4999 } })],
+    savedOrder: { ...order, currency: "usd" },
+  });
   await startCheckout(selection);
   expect(mocks.create).toHaveBeenCalledWith(
     expect.objectContaining({
@@ -168,16 +192,38 @@ it("ships a dollar store's orders within the US", async () => {
     expect.anything(),
   );
 });
-it("charges only in the store's own currency", async () => {
+it("charges only in a currency the store sells in", async () => {
   // A product still priced in kronor after the store switched to dollars.
+  mocks.picked = "sek";
   mocks.results.push(
-    { data: { slug: "high-elf-club", currency: "usd" }, error: null },
-    { data: { currency: "usd" }, error: null },
+    { data: { slug: "high-elf-club" }, error: null },
+    ...store("usd", ["usd"], [a3]),
     { data: [line()], error: null },
-    { error: null },
   );
   await expect(startCheckout(selection)).rejects.toMatchObject({ status: 400 });
   expect(mocks.create).not.toHaveBeenCalled();
+});
+it("charges euros and ships across the EU for a customer paying in euros", async () => {
+  mocks.picked = "eur";
+  const both = { ...a3, prices: { sek: 39900, eur: 3499 } };
+  queue({
+    currencies: ["sek", "eur"],
+    lines: [line(1, both)],
+    savedOrder: {
+      ...order,
+      currency: "eur",
+      amount_total: 3499,
+      order_items: [{ ...item, unit_amount: 3499 }],
+    },
+  });
+  await startCheckout(selection);
+  const params = mocks.create.mock.calls[0][0];
+  expect(params.line_items[0].price_data).toMatchObject({
+    currency: "eur",
+    unit_amount: 3499,
+  });
+  expect(params.shipping_address_collection.allowed_countries).toHaveLength(27);
+  expect(params.shipping_address_collection.allowed_countries).toContain("DE");
 });
 it("requires session ownership before accessing purchase data", async () => {
   mocks.session.mockRejectedValue(new Error("Not authorized"));

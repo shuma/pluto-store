@@ -237,6 +237,11 @@ const QUOTE_ADDRESSES: Record<string, Record<string, string>> = {
     city: "Stockholm",
     postCode: "11151",
   },
+  DE: {
+    addressLine1: "Unter den Linden 1",
+    city: "Berlin",
+    postCode: "10117",
+  },
 };
 const quote = z.object({
   quotes: z
@@ -280,8 +285,9 @@ export async function getOrderCost(
   items: { productUid: string; quantity: number }[],
   currency: Currency,
 ): Promise<UnitCost> {
-  // Delivered within the currency's market: a dollar store ships in the US.
-  const shippingCountry = MARKETS[currency].country;
+  // Delivered within the currency's market: dollars ship in the US, euros
+  // are quoted for Germany.
+  const shippingCountry = MARKETS[currency].quoteCountry;
   const address = QUOTE_ADDRESSES[shippingCountry];
   if (!address) {
     let print = 0;
@@ -340,7 +346,7 @@ export async function getOrderCost(
 // country, in minor units. Excludes shipping.
 export async function getPrintCost(productUid: string, currency: Currency) {
   const params = new URLSearchParams({
-    country: MARKETS[currency].country,
+    country: MARKETS[currency].quoteCountry,
     currency: currency.toUpperCase(),
   });
   const prices = await gelato(

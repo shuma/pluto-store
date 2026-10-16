@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import nextEnv from "@next/env";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { productRow } from "../lib/domain";
+import { PRODUCT_WITH_PRICES, productRow } from "../lib/domain";
 import { platformFee } from "../lib/fees";
 import type { Currency } from "../lib/currency";
 nextEnv.loadEnvConfig(process.cwd());
@@ -70,12 +70,12 @@ const products = productRow
     must(
       await db
         .from("products")
-        .select("*")
+        .select(PRODUCT_WITH_PRICES)
         .eq("creator_id", store.id)
-        .eq("active", true)
-        .eq("currency", store.currency),
+        .eq("active", true),
     ),
-  );
+  )
+  .filter((p) => p.prices[store.currency] !== undefined);
 if (!products.length)
   throw new Error(
     `The demo store has no active ${store.currency.toUpperCase()} products to order.`,
@@ -176,7 +176,7 @@ must(
       const [payment, fulfillment] = STATES[n];
       const lines = orderLines(n);
       const amount = lines.reduce(
-        (sum, l) => sum + l.product.price_amount * l.quantity,
+        (sum, l) => sum + l.product.prices[store.currency]! * l.quantity,
         0,
       );
       const paid = payment === "paid";
@@ -232,7 +232,7 @@ must(
         product_id: product.id,
         product_snapshot: product,
         quantity,
-        unit_amount: product.price_amount,
+        unit_amount: product.prices[store.currency]!,
         print_storage_path: "samples/print.png",
       })),
     ),

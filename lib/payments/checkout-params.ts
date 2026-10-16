@@ -16,7 +16,7 @@ export function checkoutParams(
   order: Order,
   appUrl: string,
   storeSlug: string,
-  country: string,
+  countries: readonly string[],
   // Each item's print hanging in a room, in item order, shown beside it;
   // Stripe fetches them, so they must be reachable for the session's life.
   imageUrls: (string | null)[] = [],
@@ -29,9 +29,8 @@ export function checkoutParams(
     customer_creation: "always",
     billing_address_collection: "required",
     shipping_address_collection: {
-      allowed_countries: [
-        country as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry,
-      ],
+      allowed_countries:
+        countries as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry[],
     },
     line_items: order.order_items.map((item, i) => ({
       quantity: item.quantity,

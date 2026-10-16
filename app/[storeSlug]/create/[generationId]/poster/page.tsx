@@ -7,6 +7,7 @@ import { cachedSignedUrl } from "@/lib/storage";
 import { FlowHeader } from "@/components/flow-header";
 import { PosterSelection } from "@/components/poster-selection";
 import { getCart } from "@/lib/cart/cart";
+import { customerCurrency } from "@/lib/stores/customer-currency";
 export default async function PosterPage({
   params,
   searchParams,
@@ -33,6 +34,8 @@ export default async function PosterPage({
     "generated-artworks",
     data.storage_path,
   );
+  const products = await getProducts(store);
+  const { currency, selling } = await customerCurrency(store, products);
   return (
     <div data-page-surface="paper" className="min-h-dvh bg-paper">
       <FlowHeader
@@ -45,7 +48,9 @@ export default async function PosterPage({
       />
       <main id="main" className="mx-auto max-w-6xl px-4 pt-4 pb-12 sm:pt-12">
         <PosterSelection
-          products={await getProducts(store)}
+          products={products.filter((p) => p.prices[currency] !== undefined)}
+          currency={currency}
+          currencies={selling}
           artworkUrl={artworkUrl}
           sessionId={session.id}
           artworkId={artworkId}

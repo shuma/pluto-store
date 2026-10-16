@@ -9,6 +9,7 @@ export const PLATFORM_FEE_RATE = 0.15;
 export const PLATFORM_FEE_MINIMUM: Record<Currency, number> = {
   usd: 300,
   sek: 3000,
+  eur: 300,
 };
 
 // Stripe's standard card pricing in each market, as an estimate: the actual
@@ -16,6 +17,9 @@ export const PLATFORM_FEE_MINIMUM: Record<Currency, number> = {
 const PAYMENT_FEES: Record<Currency, { rate: number; fixed: number }> = {
   usd: { rate: 0.029, fixed: 30 },
   sek: { rate: 0.015, fixed: 180 },
+  // EEA cards on Pluto's Swedish account (SEK 1.80 is about €0.16), plus
+  // Stripe's 2% for converting euros into the kronor it settles in.
+  eur: { rate: 0.035, fixed: 16 },
 };
 
 export function platformFee(price: number, currency: Currency) {

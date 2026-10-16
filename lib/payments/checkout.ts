@@ -117,7 +117,7 @@ async function orderForCart(
   currency: Currency,
   settings: ReturnType<typeof config>,
 ) {
-  const key = cartKey(lines);
+  const key = cartKey(lines, currency);
   const found = await findOrder(session.id, key);
   if (found) return orderRow.parse(found);
   const db = adminDb();
@@ -224,20 +224,22 @@ export async function startCheckout(input: unknown) {
     settings = config();
   const { data: store, error: storeError } = await db
     .from("creators")
-    .select("slug,currency")
+    .select("slug")
     .eq("id", session.creator_id)
     .eq("status", "live")
     .single();
   check(storeError);
-  const { lines } = await cartLines(session.id, session.creator_id, artworkId);
+  const { lines, currency } = await cartLines(
+    session.id,
+    session.creator_id,
+    artworkId,
+  );
   if (!lines.length) throw new HttpError(400, "Your cart is empty.");
   if (
     settings.fulfillmentMode === "gelato" &&
     lines.some((l) => !l.product.gelato_product_uid)
   )
     throw new HttpError(503, "One of these prints is temporarily unavailable.");
-  // The store's currency, not a global one: each store sells in its own.
-  const currency = store!.currency as Currency;
   let order = await orderForCart(session, lines, currency, settings);
   await expireOtherCheckouts(session.id, order.id);
   if (order.payment_status === "paid")
@@ -274,8 +276,9 @@ export async function startCheckout(input: unknown) {
       order,
       settings.appUrl,
       store!.slug,
-      // Checkout ships within the store's market, which its currency sets.
-      MARKETS[store!.currency as Currency].country,
+      // Checkout ships within the market of the currency paid in: euros
+      // anywhere in the EU, kronor in Sweden, dollars in the US.
+      MARKETS[order.currency as Currency].countries,
       // A Checkout Session lasts a day; so do the links to its images.
       await itemImages(order),
     ),

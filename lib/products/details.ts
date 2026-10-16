@@ -1,7 +1,7 @@
 import type { Product } from "@/lib/domain";
 import { isFramed } from "./catalog";
 import { ARCHIVAL, MATTE, VALUE_LABELS } from "./curated";
-import { currencySchema, MARKETS } from "@/lib/currency";
+import { EU_COUNTRIES, MARKETS, type Currency } from "@/lib/currency";
 // What a customer reads about a print before buying: its features, how to
 // care for it and the EU product-safety (GPSR) information. Every fact is the
 // print partner's own spec for that paper and frame (Gelato, checked
@@ -68,14 +68,14 @@ const SAFETY = [
   },
 ];
 
-// GPSR covers sales into the EU. A store ships only within its currency's
-// market, so the product's currency says whether its buyers are there; a US
-// store's customers get no EU notice (or EU warranty claim) that isn't theirs.
-const EU_MARKETS = new Set(["SE"]);
-function sellsInEu(product: Product) {
-  const currency = currencySchema.safeParse(product.currency);
-  return currency.success && EU_MARKETS.has(MARKETS[currency.data].country);
-}
+// GPSR covers sales into the EU. Checkout ships only within the market of
+// the currency paid in, so that currency says whether the buyer is there; a
+// customer paying in dollars gets no EU notice (or EU warranty claim) that
+// isn't theirs.
+const sellsInEu = (currency: Currency) =>
+  MARKETS[currency].countries.some((c) =>
+    (EU_COUNTRIES as readonly string[]).includes(c),
+  );
 
 // The paper is part of the product uid; products saved with readable
 // attributes say it there too. Older products have neither.
@@ -86,15 +86,16 @@ function paper(product: Product) {
   return [MATTE, ARCHIVAL].find((value) => VALUE_LABELS[value] === label);
 }
 
-// Checkout charges no shipping and takes an address in the store's own
-// market only (lib/payments/checkout-params.ts), so that is all this says.
-function delivery(product: Product) {
-  const currency = currencySchema.safeParse(product.currency);
-  const where = currency.success ? ` in ${MARKETS[currency.data].name}` : "";
-  return `Shipping is included in the price. Your print is made to order by a print partner near you and delivered to your door${where}.`;
-}
+// Checkout charges no shipping and takes an address only in the market of
+// the currency paid in (lib/payments/checkout-params.ts), so that is all
+// this says.
+const delivery = (currency: Currency) =>
+  `Shipping is included in the price. Your print is made to order by a print partner near you and delivered to your door in ${MARKETS[currency].name}.`;
 
-export function productDetails(product: Product): ProductDetails {
+export function productDetails(
+  product: Product,
+  currency: Currency,
+): ProductDetails {
   const framed = isFramed(product.gelato_catalog);
   const paperValue = paper(product);
   const colour = product.gelato_attributes["Frame colour"];
@@ -106,8 +107,8 @@ export function productDetails(product: Product): ProductDetails {
       ...(framed ? [...(colour ? [colour] : []), ...FRAME_FEATURES] : []),
     ],
     certifiedPaper: paperValue !== undefined,
-    delivery: delivery(product),
+    delivery: delivery(currency),
     care: framed ? FRAME_CARE : POSTER_CARE,
-    safety: sellsInEu(product) ? SAFETY : [],
+    safety: sellsInEu(currency) ? SAFETY : [],
   };
 }

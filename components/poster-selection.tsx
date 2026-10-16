@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Lock, Minus, Plus, Trash2, ZoomIn } from "lucide-react";
 import { Button } from "./ui/button";
@@ -13,28 +14,36 @@ import {
   MAX_PER_ITEM,
   MAX_PER_ORDER,
 } from "@/lib/cart/rules";
-import {
-  isFramed,
-  nameAndSize,
-  productKind,
-} from "@/lib/products/catalog";
+import { isFramed, nameAndSize, productKind } from "@/lib/products/catalog";
 import { productDetails } from "@/lib/products/details";
 import { cn } from "@/lib/utils";
 import { PaymentMethods } from "./payment-methods";
 import { ProductSticker } from "./product-pictograms";
 import { PreviewViewer, type ViewerItem } from "./preview-viewer";
 import { ProductDetails } from "./product-details";
+import { Segmented } from "./segmented";
+import {
+  CURRENCY_COOKIE,
+  CURRENCY_LABELS,
+  type Currency,
+} from "@/lib/currency";
 // The quantity stepper's minus and plus: ghost icon buttons, round and a step
 // smaller to sit inside the pill.
 const STEP = "size-8 rounded-full";
 export function PosterSelection({
   products,
+  currency,
+  currencies,
   artworkUrl,
   sessionId,
   artworkId,
   initialCart,
 }: {
+  // The prints for sale in `currency`.
   products: Product[];
+  // What the customer pays in, and what else they could.
+  currency: Currency;
+  currencies: Currency[];
   artworkUrl: string;
   sessionId: string;
   artworkId: string;
@@ -60,7 +69,11 @@ export function PosterSelection({
     ids.includes(id) ? ids : [...ids, id];
   const markLoaded = (id: string) => setLoaded(add(id)),
     markFailed = (id: string) => setFailed(add(id));
-  const product = products.find((p) => p.id === productId);
+  const router = useRouter();
+  // A print not sold in the currency just switched to falls back to the
+  // first that is.
+  const product = products.find((p) => p.id === productId) ?? products[0];
+  const shownId = product?.id ?? "";
   const mockupSrc = (id: string) =>
     `/api/mockups?${new URLSearchParams({ session: sessionId, artwork: artworkId, product: id })}`;
   // The mock-up grows with the print: the largest fills two thirds of the
@@ -107,7 +120,25 @@ export function PosterSelection({
       setCartBusy(false);
     }
   }
-  const addSelected = () => changeCart("POST", { productId });
+  const addSelected = () => changeCart("POST", { productId: product?.id });
+  // Kept for the visit and the next one, so prices, the cart and checkout
+  // all follow it. The cart is reread for its new prices.
+  async function switchCurrency(next: Currency) {
+    document.cookie = `${CURRENCY_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+    setCartBusy(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/cart?${new URLSearchParams({ session: sessionId, artwork: artworkId })}`,
+      );
+      if (response.ok) setCart((await response.json()).items);
+    } catch {
+      // The page below still rereads the cart.
+    } finally {
+      setCartBusy(false);
+    }
+    router.refresh();
+  }
   async function checkout() {
     setBusy(true);
     setError("");
@@ -131,9 +162,10 @@ export function PosterSelection({
       setBusy(false);
     }
   }
-  const currency = products[0]?.currency ?? cart[0]?.product.currency ?? "usd";
   const count = cartCount(cart);
-  const total = cart.length ? cartTotal(cart) : (product?.price_amount ?? null);
+  const total = cart.length
+    ? cartTotal(cart)
+    : (product?.prices[currency] ?? null);
   const framed = isFramed(product?.gelato_catalog);
   // "Framed" or "Unframed" only tells options apart when the store sells both.
   const mixed =
@@ -158,14 +190,14 @@ export function PosterSelection({
           {
             value: "room" as const,
             label: "On a wall",
-            src: mockupSrc(productId),
+            src: mockupSrc(shownId),
           },
         ]
       : []),
   ];
   const viewerItems: ViewerItem[] = [
     { id: "artwork", url: artworkUrl, aspect: ratio },
-    ...(hasRoom ? [{ id: "room", url: mockupSrc(productId), aspect: 1 }] : []),
+    ...(hasRoom ? [{ id: "room", url: mockupSrc(shownId), aspect: 1 }] : []),
   ];
   return (
     <div className="grid gap-6 md:grid-cols-[1.25fr_.75fr] md:items-start md:gap-12 lg:gap-20">
@@ -212,7 +244,7 @@ export function PosterSelection({
                 }}
                 className={cn(
                   "absolute inset-0 size-full object-cover transition-opacity motion-large",
-                  p.id === productId && loaded.includes(p.id)
+                  p.id === shownId && loaded.includes(p.id)
                     ? "opacity-100"
                     : "opacity-0",
                 )}
@@ -292,12 +324,30 @@ export function PosterSelection({
         </div>
       </div>
       <div>
-        <h1 className="text-2xl font-semibold sm:text-3xl">
-          Choose your prints
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Printed to order and delivered to your door.
-        </p>
+        {/* The currency sits with the heading, above the prices it sets. */}
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+          <div>
+            <h1 className="text-2xl font-semibold sm:text-3xl">
+              Choose your prints
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Printed to order and delivered to your door.
+            </p>
+          </div>
+          {currencies.length > 1 && (
+            <Segmented
+              label="Currency"
+              size="sm"
+              options={currencies.map((c) => ({
+                value: c,
+                label: c.toUpperCase(),
+                title: CURRENCY_LABELS[c],
+              }))}
+              value={currency}
+              onChange={switchCurrency}
+            />
+          )}
+        </div>
         {/* Each size is its own line of the cart: tap a row to preview it,
             "Add" to buy it, then the stepper for copies. */}
         <fieldset className="mt-8">
@@ -309,8 +359,9 @@ export function PosterSelection({
               const area = p.width_mm * p.height_mm,
                 span = largestArea - smallestArea,
                 size = span ? 0.8 + (0.2 * (area - smallestArea)) / span : 1;
-              const on = p.id === productId,
-                { summary } = productDetails(p),
+              const on = p.id === product?.id,
+                price = p.prices[currency]!,
+                { summary } = productDetails(p, currency),
                 line = cart.find((i) => i.product.id === p.id),
                 { title, size: printSize } = nameAndSize(
                   p.name,
@@ -332,7 +383,11 @@ export function PosterSelection({
                   )}
                 >
                   <ProductSticker
-                    kind={productKind(p.gelato_catalog, p.width_mm, p.height_mm)}
+                    kind={productKind(
+                      p.gelato_catalog,
+                      p.width_mm,
+                      p.height_mm,
+                    )}
                     size={size}
                     selected={on}
                     className="size-10"
@@ -372,7 +427,7 @@ export function PosterSelection({
                   </label>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     <span className="text-sm font-semibold tabular-nums">
-                      {money(p.price_amount, p.currency)}
+                      {money(price, currency)}
                     </span>
                     {quantity === 0 ? (
                       <Button
@@ -390,7 +445,7 @@ export function PosterSelection({
                               artworkUrl,
                               product: p,
                               quantity: 1,
-                              unitAmount: p.price_amount,
+                              unitAmount: price,
                             },
                           ]);
                         }}
@@ -520,7 +575,7 @@ export function PosterSelection({
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Secure payment by Stripe
         </p>
-        {product && <ProductDetails product={product} />}
+        {product && <ProductDetails product={product} currency={currency} />}
       </div>
     </div>
   );

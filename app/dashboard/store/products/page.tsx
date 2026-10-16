@@ -8,6 +8,7 @@ import { ProductsManager } from "@/components/products-manager";
 import { getExamples } from "@/lib/stores/get-store";
 import { readStylePreview } from "@/lib/stores/style-preview";
 import type { Artwork } from "@/lib/products/art";
+import { storeCurrencies } from "@/lib/domain";
 import { resizedPublicUrl } from "@/lib/storage";
 // Art is drawn at most about 200 px across on a print mock, so the originals
 // were far more image than the page can show.
@@ -30,25 +31,30 @@ export default async function Products() {
     ),
     fallback: fallback && resizedPublicUrl(fallback, ART_SIZE),
   };
-  // Costs are cached for hours, and a missing one only hides the earnings
-  // line, so a Gelato hiccup never blocks the page.
+  const currencies = storeCurrencies(store);
+  // Costs are cached for hours, and a missing one only hides an earnings
+  // line, so a Gelato hiccup never blocks the page. Quoted in each currency
+  // the product has a price in, for delivery within that market.
   const costs = gelatoConfigured()
     ? Object.fromEntries(
-        (
-          await Promise.all(
-            products.map(async (p) => {
-              // Earnings only mean something for what is priced in the
-              // store's currency.
-              if (!p.gelato_product_uid || p.currency !== store.currency)
-                return null;
-              const cost = await getUnitCost(
-                p.gelato_product_uid,
-                store.currency,
-              ).catch(() => null);
-              return cost ? [p.id, cost] : null;
-            }),
-          )
-        ).filter((entry) => entry !== null),
+        await Promise.all(
+          products.map(async (p) => {
+            const quotes = await Promise.all(
+              currencies.map(async (c) => {
+                if (!p.gelato_product_uid || p.prices[c] === undefined)
+                  return null;
+                const cost = await getUnitCost(p.gelato_product_uid, c).catch(
+                  () => null,
+                );
+                return cost ? ([c, cost] as const) : null;
+              }),
+            );
+            return [
+              p.id,
+              Object.fromEntries(quotes.filter((q) => q !== null)),
+            ] as const;
+          }),
+        ),
       )
     : {};
   return (
@@ -62,6 +68,7 @@ export default async function Products() {
         products={products}
         costs={costs}
         currency={store.currency}
+        currencies={currencies}
         art={art}
       />
     </>

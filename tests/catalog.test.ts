@@ -148,16 +148,16 @@ describe("catalog helpers", () => {
       productCreateSchema.parse({
         name: "Large print",
         description: "",
-        price: "249.50",
+        prices: { sek: "249.50", eur: "24.99" },
         catalog: "posters",
         productUid: "x",
-      }).price,
-    ).toBe(24950);
+      }).prices,
+    ).toEqual({ sek: 24950, eur: 2499 });
     expect(() =>
       productCreateSchema.parse({
         name: "Free",
         description: "",
-        price: "0",
+        prices: { sek: "0" },
         catalog: "posters",
         productUid: "x",
       }),

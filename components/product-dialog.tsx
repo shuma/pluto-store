@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check } from "lucide-react";
 import type { Product } from "@/lib/domain";
 import {
@@ -28,7 +28,12 @@ import {
   SIZE_SYSTEM_LABELS,
   type SizeSystem,
 } from "@/lib/products/curated";
-import { MARKETS, type Currency } from "@/lib/currency";
+import {
+  CURRENCY_LABELS,
+  CURRENCY_PLURALS,
+  MARKETS,
+  type Currency,
+} from "@/lib/currency";
 import { payout, PLATFORM_FEE_RATE } from "@/lib/fees";
 import { money } from "@/lib/payments/pricing";
 import { cn } from "@/lib/utils";
@@ -44,7 +49,7 @@ import { FIELD, Field } from "./form-field";
 import { PrintMock } from "./print-mock";
 import { frameTone } from "@/lib/products/frames";
 import { artFor, type Artwork } from "@/lib/products/art";
-import { Segmented } from "./segmented";
+import { Segmented, Toggles } from "./segmented";
 
 const DESCRIPTION_MAX = 200;
 const FRAME_COLOUR = "FrameColor";
@@ -63,12 +68,15 @@ export type ProductDetails = z.output<typeof productDetailsSchema>;
 export function ProductDialog({
   draft,
   currency,
+  currencies,
   art,
   onOpenChange,
   onSave,
 }: {
   draft: ProductDraft | null;
+  // The store's main currency, and every currency it sells in.
   currency: Currency;
+  currencies: Currency[];
   // The creator's style previews, shown on every print.
   art: Artwork;
   onOpenChange: (open: boolean) => void;
@@ -127,19 +135,17 @@ export function ProductDialog({
             defaults={{
               name: editing.name,
               description: editing.description,
-              // A price in another currency can't carry over; it starts
-              // empty (then suggested) with the old one shown.
-              price:
-                editing.currency === currency
-                  ? String(toMajor(editing.price_amount))
-                  : "",
+              // A currency without a price starts empty, then suggested.
+              prices: Object.fromEntries(
+                currencies.map((c) => [
+                  c,
+                  editing.prices[c] === undefined
+                    ? ""
+                    : String(toMajor(editing.prices[c])),
+                ]),
+              ),
             }}
-            previousPrice={
-              editing.currency !== currency
-                ? money(editing.price_amount, editing.currency)
-                : undefined
-            }
-            currency={currency}
+            currencies={currencies}
             art={artFor(
               art,
               draft?.kind === "edit" ? (draft.artIndex ?? 0) : 0,
@@ -155,10 +161,10 @@ export function ProductDialog({
             defaults={{
               name: defaultTitle(picked),
               description: "",
-              // Filled with the suggested price once the cost is in.
-              price: "",
+              // Filled with the suggested prices once the costs are in.
+              prices: Object.fromEntries(currencies.map((c) => [c, ""])),
             }}
-            currency={currency}
+            currencies={currencies}
             art={chosen!.art}
             onBack={() => setPicked(null)}
             onSave={async (details, variant) => {
@@ -340,7 +346,7 @@ function CardEarnings({
 }) {
   // One quote per card, cached on the server, so the grid never waits on
   // the slowest price.
-  const cost = useQuery(unitCostQuery(productUid));
+  const cost = useQuery(unitCostQuery(productUid, currency));
   if (cost.isPending) return <Skeleton className="mx-1 mt-3 mb-1 h-4 w-3/4" />;
   if (!cost.data)
     return (
@@ -364,9 +370,8 @@ function DetailsStep({
   variants,
   linked,
   defaults,
-  currency,
+  currencies,
   art,
-  previousPrice,
   onBack,
   onSave,
 }: {
@@ -374,11 +379,16 @@ function DetailsStep({
   variants: CatalogProduct[];
   // Whether the product is a catalog print with a cost to show.
   linked: boolean;
-  defaults: { name: string; description: string; price: string };
-  currency: Currency;
+  defaults: {
+    name: string;
+    description: string;
+    prices: Partial<Record<Currency, string>>;
+  };
+  // The store's currencies. The product starts with a price in each it
+  // already has one in, or in all of them when new; the creator can turn
+  // any off for this product.
+  currencies: Currency[];
   art: ReturnType<typeof artFor>;
-  // The old price when the store has switched currency since.
-  previousPrice?: string;
   onBack?: () => void;
   onSave: (details: ProductDetails, variant: CatalogProduct) => Promise<void>;
 }) {
@@ -393,33 +403,50 @@ function DetailsStep({
   } = useForm<z.input<typeof productDetailsSchema>, unknown, ProductDetails>({
     resolver: zodResolver(productDetailsSchema),
     defaultValues: defaults,
+    // A currency turned off leaves the form, so its empty price never
+    // blocks saving and it isn't sent.
+    shouldUnregister: true,
   });
-  const [price, description] = useWatch({
+  const [enabled, setEnabled] = useState<Currency[]>(() => {
+    const priced = currencies.filter((c) => defaults.prices[c]);
+    return priced.length ? priced : currencies;
+  });
+  const [prices, description] = useWatch({
     control,
-    name: ["price", "description"],
+    name: ["prices", "description"],
   });
-  const cost = useQuery(unitCostQuery(linked ? variant.productUid : null));
-  const priceMinor = Math.round(Number(price) * 100);
-  const suggested = cost.data ? suggestPrice(cost.data.total, currency) : null;
-  // A new product follows the suggested price, including when the paper
+  // One quote per currency, each delivered within its own market.
+  const costs = useQueries({
+    queries: currencies.map((c) =>
+      unitCostQuery(linked ? variant.productUid : null, c),
+    ),
+  });
+  const suggested = Object.fromEntries(
+    currencies.map((c, i) => [
+      c,
+      costs[i].data ? suggestPrice(costs[i].data.total, c) : null,
+    ]),
+  ) as Record<Currency, number | null>;
+  // A new price follows the suggested one, including when the paper
   // changes, until the creator types their own.
-  const follows = !defaults.price && !dirtyFields.price;
+  const following = enabled.filter(
+    (c) => !defaults.prices[c] && !dirtyFields.prices?.[c],
+  );
   useEffect(() => {
-    if (follows && suggested !== null)
-      setValue("price", String(toMajor(suggested)));
-  }, [follows, suggested, setValue]);
+    for (const c of following)
+      if (suggested[c] !== null)
+        setValue(`prices.${c}`, String(toMajor(suggested[c])));
+    // Suggested prices are derived each render; their values are the deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [following.join(), ...currencies.map((c) => suggested[c]), setValue]);
+  // Which currency the earnings breakdown is shown in: one still on.
+  const [picked, setShown] = useState(currencies[0]);
+  const shown = enabled.includes(picked) ? picked : enabled[0];
+  const shownIndex = currencies.indexOf(shown);
+  const minor = (c: Currency) => Math.round(Number(prices?.[c]) * 100);
   const framed = isFramed(variant.catalog);
   const paper = variant.attributes.Paper;
   const frame = variant.attributes["Frame colour"];
-  // "$" goes before the amount, "kr" after, as each is written.
-  const parts = new Intl.NumberFormat("en", {
-    style: "currency",
-    currency,
-  }).formatToParts(1);
-  const symbol = parts.find((p) => p.type === "currency")?.value ?? "";
-  const symbolFirst =
-    parts.findIndex((p) => p.type === "currency") <
-    parts.findIndex((p) => p.type === "integer");
   return (
     <form
       className="flex max-h-[calc(100dvh-2rem)] flex-col"
@@ -517,71 +544,116 @@ function DetailsStep({
             {...register("description")}
           />
         </Field>
-        <div>
-          <label
-            htmlFor="product-price"
-            className="mb-2 block text-sm font-medium"
-          >
-            Price
-          </label>
-          <div
-            className={cn(
-              FIELD,
-              "flex h-12 items-center gap-1 px-3 focus-within:shadow-[inset_0_0_0_var(--border-s)_var(--color-1-transparent),var(--surface-recessed-shadow)] has-[:focus-visible]:[outline:var(--focus-ring-outline)]",
-              errors.price && "shadow-[inset_0_0_0_var(--border-s)_var(--error),var(--surface-recessed-shadow)]",
-            )}
-          >
-            {symbolFirst && (
-              <span className="select-none text-muted-foreground">
-                {symbol}
-              </span>
-            )}
-            <input
-              id="product-price"
-              inputMode="decimal"
-              placeholder="0"
-              aria-invalid={!!errors.price}
-              className="h-full min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
-              {...register("price")}
-            />
-            {!symbolFirst && (
-              <span className="select-none text-muted-foreground">
-                {symbol}
-              </span>
+        <fieldset>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <legend className="text-sm font-medium">
+              {enabled.length > 1 ? "Prices" : "Price"}
+            </legend>
+            {currencies.length > 1 && (
+              <Toggles
+                label="Sell in"
+                options={currencies.map((c) => ({
+                  value: c,
+                  label: c.toUpperCase(),
+                  title: CURRENCY_LABELS[c],
+                  locked: enabled.length === 1,
+                }))}
+                value={enabled}
+                onChange={(next) =>
+                  setEnabled(currencies.filter((c) => next.includes(c)))
+                }
+              />
             )}
           </div>
-          <div className="mt-2 flex flex-wrap justify-between gap-x-4 text-sm">
-            {errors.price ? (
-              <p className="text-destructive">{errors.price.message}</p>
-            ) : (
-              <p className="text-muted-foreground">
-                {previousPrice ? `Was ${previousPrice}. ` : ""}
-                What customers pay, shipping included.
-              </p>
-            )}
-            {suggested !== null && suggested !== priceMinor && (
-              <button
-                type="button"
-                onClick={() =>
-                  setValue("price", String(toMajor(suggested)), {
-                    shouldValidate: true,
-                  })
-                }
-                className="font-medium underline-offset-4 hover:underline"
-              >
-                Use suggested {money(suggested, currency)}
-              </button>
-            )}
+          <div className="space-y-4">
+            {enabled.map((c) => {
+              const { symbol, first } = affix(c);
+              const error = errors.prices?.[c]?.message;
+              const best = suggested[c];
+              return (
+                <div key={c}>
+                  <div
+                    className={cn(
+                      FIELD,
+                      "flex h-12 items-center gap-1 px-3 focus-within:shadow-[inset_0_0_0_var(--border-s)_var(--color-1-transparent),var(--surface-recessed-shadow)] has-[:focus-visible]:[outline:var(--focus-ring-outline)]",
+                      error &&
+                        "shadow-[inset_0_0_0_var(--border-s)_var(--error),var(--surface-recessed-shadow)]",
+                    )}
+                  >
+                    {first && (
+                      <span className="select-none text-muted-foreground">
+                        {symbol}
+                      </span>
+                    )}
+                    <input
+                      id={`product-price-${c}`}
+                      inputMode="decimal"
+                      placeholder="0"
+                      aria-label={`Price in ${CURRENCY_PLURALS[c]}`}
+                      aria-invalid={!!error}
+                      className="h-full min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
+                      {...register(`prices.${c}`)}
+                    />
+                    {!first && (
+                      <span className="select-none text-muted-foreground">
+                        {symbol}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex flex-wrap justify-between gap-x-4 text-sm">
+                    {error ? (
+                      <p className="text-destructive">{error}</p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        {enabled.length > 1
+                          ? `Customers paying in ${CURRENCY_PLURALS[c]}, shipping in ${MARKETS[c].name} included.`
+                          : "What customers pay, shipping included."}
+                      </p>
+                    )}
+                    {best !== null && best !== minor(c) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setValue(`prices.${c}`, String(toMajor(best)), {
+                            shouldValidate: true,
+                          })
+                        }
+                        className="font-medium underline-offset-4 hover:underline"
+                      >
+                        Use suggested {money(best, c)}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           {linked && (
-            <Breakdown
-              cost={cost.data}
-              pending={cost.isPending}
-              price={priceMinor > 0 ? priceMinor : null}
-              currency={currency}
-            />
+            <>
+              {enabled.length > 1 && (
+                <div className="mt-4">
+                  <Segmented
+                    label="Earnings in"
+                    size="sm"
+                    options={enabled.map((c) => ({
+                      value: c,
+                      label: c.toUpperCase(),
+                      title: CURRENCY_LABELS[c],
+                    }))}
+                    value={shown}
+                    onChange={setShown}
+                  />
+                </div>
+              )}
+              <Breakdown
+                cost={costs[shownIndex]?.data}
+                pending={costs[shownIndex]?.isPending ?? true}
+                price={minor(shown) > 0 ? minor(shown) : null}
+                currency={shown}
+              />
+            </>
           )}
-        </div>
+        </fieldset>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-3 shadow-[inset_0_var(--border-s)_0_var(--border)] bg-neutral-2 px-6 py-4">
         {message && (
@@ -700,11 +772,27 @@ function Breakdown({
         </p>
       )}
       <p className="shadow-[inset_0_var(--border-s)_0_var(--border)] py-3 text-xs text-muted-foreground">
-        Delivery is standard home delivery within {MARKETS[currency].name}. Card
-        processing is an estimate for a standard card.
+        {currency === "eur"
+          ? "Delivery is standard home delivery to Germany; elsewhere in the EU it can cost a little more or less."
+          : `Delivery is standard home delivery within ${MARKETS[currency].name}.`}{" "}
+        Card processing is an estimate for a standard card.
       </p>
     </div>
   );
+}
+
+// "$" goes before the amount, "kr" after, as each is written.
+function affix(currency: Currency) {
+  const parts = new Intl.NumberFormat("en", {
+    style: "currency",
+    currency,
+  }).formatToParts(1);
+  return {
+    symbol: parts.find((p) => p.type === "currency")?.value ?? "",
+    first:
+      parts.findIndex((p) => p.type === "currency") <
+      parts.findIndex((p) => p.type === "integer"),
+  };
 }
 
 function Notice({ children }: { children: React.ReactNode }) {
