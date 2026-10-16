@@ -1,6 +1,7 @@
 import { ownedStore } from "@/lib/auth";
 import { adminDb, check } from "@/lib/supabase/admin";
-import { ORDER_WITH_ITEMS, orderRow } from "@/lib/domain";
+import { ORDER_WITH_ITEMS, orderRow, storeCurrencies } from "@/lib/domain";
+import { CURRENCIES } from "@/lib/currency";
 import { IncomeBoard } from "@/components/income-board";
 // A year and more of a small store's orders; the charts, figures and
 // search all work on these in the browser, so they are instant.
@@ -20,10 +21,16 @@ export default async function Income() {
   const store = await ownedStore();
   if (!store) return <p>Save your store first.</p>;
   const { orders, loadedAt } = await loadOrders(store.id);
+  // What it sells in now, and anything it was paid in before.
+  const used = new Set([
+    ...storeCurrencies(store),
+    ...orders.filter((o) => o.payment_status === "paid").map((o) => o.currency),
+  ]);
   return (
     <IncomeBoard
       orders={orders}
       currency={store.currency}
+      currencies={CURRENCIES.filter((c) => used.has(c))}
       now={loadedAt}
       truncated={orders.length === LIMIT}
     />

@@ -3,9 +3,11 @@ import { adminDb, check } from "@/lib/supabase/admin";
 import { syncPayoutsStatus } from "@/lib/payouts/connect";
 import { HOLD_DAYS, nextPayoutDate } from "@/lib/payouts/rules";
 import { SettingsBoard } from "@/components/settings-board";
+import type { Currency } from "@/lib/currency";
 
 // What the creator is owed: earnings the next monthly run will send (orders
-// shipped long enough before it), and earnings still in their 30 days.
+// shipped long enough before it), and earnings still in their 30 days. By
+// currency, as each is paid out in its own.
 async function earningsDue(creatorId: string, nextRun: number) {
   const { data, error } = await adminDb()
     .from("orders")
@@ -17,14 +19,14 @@ async function earningsDue(creatorId: string, nextRun: number) {
     .not("creator_earnings_amount", "is", null);
   check(error);
   const cutoff = nextRun - HOLD_DAYS * 86_400_000;
-  let next = 0,
-    later = 0;
+  const due: Partial<Record<Currency, { next: number; later: number }>> = {};
   for (const o of data ?? []) {
+    const sum = (due[o.currency as Currency] ??= { next: 0, later: 0 });
     if (Date.parse(o.fulfilled_at!) <= cutoff)
-      next += o.creator_earnings_amount!;
-    else later += o.creator_earnings_amount!;
+      sum.next += o.creator_earnings_amount!;
+    else sum.later += o.creator_earnings_amount!;
   }
-  return { next, later };
+  return due;
 }
 
 async function loadSettings() {

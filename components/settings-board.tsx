@@ -46,7 +46,7 @@ export function SettingsBoard({
     hasAccount: boolean;
     payoutsStatus: PayoutsStatus;
   } | null;
-  earnings: { next: number; later: number } | null;
+  earnings: Partial<Record<Currency, { next: number; later: number }>> | null;
   nextRun: number;
   notifications: Notifications;
 }) {
@@ -143,7 +143,8 @@ function Payouts({
     hasAccount: boolean;
     payoutsStatus: PayoutsStatus;
   } | null;
-  earnings: { next: number; later: number } | null;
+  // By currency; each is paid out in its own.
+  earnings: Partial<Record<Currency, { next: number; later: number }>> | null;
   nextRun: number;
 }) {
   const [started, setStarted] = useState(false);
@@ -170,7 +171,18 @@ function Payouts({
   const status = STATUS[store.payoutsStatus];
   const Icon = status.icon;
   const onboarding = store.payoutsStatus === "not_started";
-  const owed = earnings ? earnings.next + earnings.later : 0;
+  // Amounts in different currencies are listed, never added: "SEK 300 + €20".
+  const amounts = (pick: (e: { next: number; later: number }) => number) =>
+    (
+      Object.entries(earnings ?? {}) as [
+        Currency,
+        { next: number; later: number },
+      ][]
+    )
+      .filter(([, e]) => pick(e) > 0)
+      .map(([c, e]) => money(pick(e), c))
+      .join(" + ") || money(0, store.currency);
+  const owed = Object.values(earnings ?? {}).some((e) => e.next + e.later > 0);
   const pill = (
     <span
       className={cn(
@@ -191,8 +203,8 @@ function Payouts({
             <Landmark className="size-5" aria-hidden />
           </span>
           <h3 className="mt-4 text-xl font-semibold">
-            {owed > 0
-              ? `${money(owed, store.currency)} is waiting for you`
+            {owed
+              ? `${amounts((e) => e.next + e.later)} is waiting for you`
               : "Get paid for every print you sell"}
           </h3>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
@@ -222,14 +234,14 @@ function Payouts({
             <p className="max-w-sm text-sm text-muted-foreground">
               {status.body}
             </p>
-            {owed > 0 && (
+            {owed && (
               <dl className="flex gap-8 text-right">
                 <div>
                   <dt className="text-xs text-muted-foreground">
                     Next payout, {date}
                   </dt>
                   <dd className="text-xl font-semibold tabular-nums">
-                    {money(earnings!.next, store.currency)}
+                    {amounts((e) => e.next)}
                   </dd>
                 </div>
                 <div>
@@ -237,7 +249,7 @@ function Payouts({
                     Waiting {HOLD_DAYS} days
                   </dt>
                   <dd className="text-xl font-semibold text-muted-foreground tabular-nums">
-                    {money(earnings!.later, store.currency)}
+                    {amounts((e) => e.later)}
                   </dd>
                 </div>
               </dl>
@@ -368,7 +380,12 @@ const NOTIFICATIONS: {
 function NotificationRows({ initial }: { initial: Notifications }) {
   const [values, setValues] = useState(initial);
   return (
-    <ul className={cn(PANEL_INSET, "*:not-last:shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)]")}>
+    <ul
+      className={cn(
+        PANEL_INSET,
+        "*:not-last:shadow-[inset_0_calc(-1*var(--border-s))_0_var(--border)]",
+      )}
+    >
       {NOTIFICATIONS.map(({ key, label, hint }) => (
         <li key={key}>
           <Row

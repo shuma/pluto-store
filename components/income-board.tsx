@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import type { Order } from "@/lib/domain";
-import type { Currency } from "@/lib/currency";
+import { CURRENCY_LABELS, type Currency } from "@/lib/currency";
 import {
   bestSeller,
   change,
@@ -29,16 +29,22 @@ import { OrdersBoard, type View } from "./orders-board";
 // always agree.
 export function IncomeBoard({
   orders,
-  currency,
+  currency: main,
+  currencies,
   now,
   truncated,
 }: {
   orders: Order[];
+  // The store's main currency, shown first, and every currency it has sold
+  // or sells in. Money in different currencies is never added up, so the
+  // page shows one at a time.
   currency: Currency;
+  currencies: Currency[];
   now: number;
   truncated: boolean;
 }) {
-  const [range, setRange] = useState<Range>("30d"),
+  const [currency, setCurrency] = useState(main),
+    [range, setRange] = useState<Range>("30d"),
     [view, setView] = useState<View>("paid");
   const scoped = useMemo(
     () => orders.filter((o) => inRange(o, range, now)),
@@ -70,7 +76,22 @@ export function IncomeBoard({
   const amount = (n: number) => money(n, currency);
   return (
     <>
-      <h1 className="mb-8 text-3xl font-semibold">Your income.</h1>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold">Your income.</h1>
+        {currencies.length > 1 && (
+          <Segmented
+            label="Currency"
+            size="sm"
+            options={currencies.map((c) => ({
+              value: c,
+              label: c.toUpperCase(),
+              title: CURRENCY_LABELS[c],
+            }))}
+            value={currency}
+            onChange={setCurrency}
+          />
+        )}
+      </div>
       {/* The period, the headline and the chart on a raised card; the three
           supporting figures in a tinted strip along its foot. The period
           also scopes the orders below. */}
@@ -185,9 +206,7 @@ function Figure({
   return (
     <div className="min-w-0 px-6 py-4">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-xl font-semibold">
-        {value}
-      </dd>
+      <dd className="mt-1 truncate text-xl font-semibold">{value}</dd>
       <dd className="mt-1 truncate text-xs text-muted-foreground">
         {children}
       </dd>
