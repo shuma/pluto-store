@@ -12,6 +12,10 @@ export type ProductDetails = {
   // we can't place the paper.
   summary: string | null;
   features: string[];
+  // True when the paper is one we know is FSC-certified (or equivalent).
+  certifiedPaper: boolean;
+  // What shipping costs and where it goes.
+  delivery: string;
   care: string[];
   safety: { label: string; value: string }[];
 };
@@ -39,8 +43,6 @@ const FRAME_FEATURES = [
   "Shatterproof plexiglass front",
   "Delivered in the frame, with hanging hardware included",
 ];
-const PRINT_ON_DEMAND =
-  "Printed on demand and shipped from a local print partner";
 
 const POSTER_CARE = [
   "If the poster gathers dust, wipe it gently with a clean, dry cloth.",
@@ -84,6 +86,14 @@ function paper(product: Product) {
   return [MATTE, ARCHIVAL].find((value) => VALUE_LABELS[value] === label);
 }
 
+// Checkout charges no shipping and takes an address in the store's own
+// market only (lib/payments/checkout-params.ts), so that is all this says.
+function delivery(product: Product) {
+  const currency = currencySchema.safeParse(product.currency);
+  const where = currency.success ? ` in ${MARKETS[currency.data].name}` : "";
+  return `Shipping is included in the price. Your print is made to order by a print partner near you and delivered to your door${where}.`;
+}
+
 export function productDetails(product: Product): ProductDetails {
   const framed = isFramed(product.gelato_catalog);
   const paperValue = paper(product);
@@ -94,8 +104,9 @@ export function productDetails(product: Product): ProductDetails {
     features: [
       ...(paperValue ? PAPER_FEATURES[paperValue] : []),
       ...(framed ? [...(colour ? [colour] : []), ...FRAME_FEATURES] : []),
-      PRINT_ON_DEMAND,
     ],
+    certifiedPaper: paperValue !== undefined,
+    delivery: delivery(product),
     care: framed ? FRAME_CARE : POSTER_CARE,
     safety: sellsInEu(product) ? SAFETY : [],
   };

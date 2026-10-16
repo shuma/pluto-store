@@ -296,7 +296,7 @@ export function PosterSelection({
           Choose your prints
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Printed to order and delivered to your door. Shipping included.
+          Printed to order and delivered to your door.
         </p>
         {/* Each size is its own line of the cart: tap a row to preview it,
             "Add" to buy it, then the stepper for copies. */}
